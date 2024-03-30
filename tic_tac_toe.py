@@ -4,6 +4,7 @@ import os
 import logging
 import itertools
 import numpy as np
+from player import Player
 from strategy import Strategy
 from utility import track_time
 from utility import print_debug
@@ -13,27 +14,7 @@ from utility import tuple_to_list_2d
 from utility import list_to_tuple_2d
 from utility import get_opposite_symbol
 
-class Player:
-    """
-    This class defines a tic tac toe player.
-    """
-
-    def __init__(self, symbol:str, strategy:Strategy):
-        """
-        Constructor.
-        @param symbol: This player's symbol.
-        @param strategy: The strategy as per which this
-                         player will make moves. This can
-                         be an object of the TabQLearning, 
-                         MiniMax or default Strategy class.
-        """
-        self.symbol = symbol
-        self.strategy = strategy
-
-    def __str__(self) -> str:
-        """ Returns a string representing this player. """
-        return f"{self.symbol}_{self.strategy.name}"
-
+LOGGER = logging.getLogger("logger_world_ttt")
 class WorldTTT:
     """ 
     This class defines the Tic Tac Toe 
@@ -53,21 +34,10 @@ class WorldTTT:
     def __init_board(self) -> List[str]:
         """ Returns an empty game board. """
         return [
-            [' ', ' ', ' '],
-            [' ', ' ', ' '],
-            [' ', ' ', ' ']
+            ['#', '#', '#'],
+            ['#', '#', '#'],
+            ['#', '#', '#']
         ]
-
-    def configure_players(self, x:Player, o:Player):
-        """ 
-        Setter for players.
-        @param x: Player X.
-        @param o: Player O.
-        """
-        self.__sym2players['X'] = x
-        self.__sym2players['O'] = o
-        self.__players2sym[str(x)] = 'X'
-        self.__players2sym[str(o)] = 'O'
 
     def __init_actions(self) -> List[Tuple[int, int]]:
         """ 
@@ -117,7 +87,7 @@ class WorldTTT:
                         [<str>, <str>, <str>], 
                         [<str>, <str>, <str>], 
                         [<str>, <str>, <str>]
-                    ] where <str> may be ' ', 'X' or 'O'.
+                    ] where <str> may be '#', 'X' or 'O'.
         @return: Whether or not this state is valid.
         Reference: https://algo.monster/liteproblems/794
         """
@@ -154,7 +124,7 @@ class WorldTTT:
                        point of view.
         """
         state_np = np.array(state)
-        state_np[state_np == ' '] = -1
+        state_np[state_np == '#'] = -1
         state_np[state_np == sym] = 1
         state_np[state_np == get_opposite_symbol(sym)] = 0
         return state_np.tolist()
@@ -170,7 +140,7 @@ class WorldTTT:
                        point of view.
         """
         state = np.array(num)
-        state[state == -1] = ' '
+        state[state == -1] = '#'
         state[state == 1] = sym
         state[state == 0] = get_opposite_symbol(sym)
         return tuple(state.tolist())
@@ -190,9 +160,9 @@ class WorldTTT:
         terminal_states = []
         i = 0 # State counter.
 
-        # For every possible combination of ' ', 'X' or 'O'
+        # For every possible combination of '#', 'X' or 'O'
         # in each of the 9 possible places in the board do ...
-        for state in itertools.product(['X', 'O', ' '], repeat=9):
+        for state in itertools.product(['X', 'O', '#'], repeat=9):
             
             # Reshape the state into a 3x3 matrix.
             state = tuple([state[i:i+3] for i in range(0, 9, 3)])
@@ -224,7 +194,7 @@ class WorldTTT:
         s_list = []
         for c in s:
             if c == sym: s_list.append(1)
-            elif c == ' ': s_list.append(-1)
+            elif c == '#': s_list.append(-1)
             else: s_list.append(0)
         count_me = s_list.count(1) # Spots occupied by "me".
         count_opp = s_list.count(0) # Spots occupied by my "opponent".
@@ -244,16 +214,53 @@ class WorldTTT:
             (3*(count_opp == 3))
         )
 
-    def is_game_over(self, state:List[str]) -> Tuple[bool, str]:
+    def __make_move(self, pos:Tuple[int, int], sym:str):
+        """
+        Changes the board and next turn state
+        as per a move that the player makes.
+        @param pos: Position wherein to place a piece.
+        @param sym: Symbol of this player.
+        """
+        board_content = self.board[pos[0]][pos[1]]
+        if board_content != "#":
+            raise Exception(f"Cannot make that move! Chosen position {pos} is not empty.")
+        self.board[pos[0]][pos[1]] = sym
+        self.next_turn = get_opposite_symbol(sym)
+
+    def get_world_str(self, pretty=False):
+        """ 
+        Returns the current world state with
+        world board and the player whose turn 
+        it is next as a string.
+        @param pretty: Whether or not the string should include
+                       spaces that make it easy to read 
+                       (false by default).
+        @param return: String of the world as it is now.
+        """
+        to_return = ''
+        for row in self.board:
+            to_return += " ".join(row)
+            to_return += "\n" if pretty else " | "
+        to_return += f"next turn = {self.next_turn}"
+        return to_return
+    
+    def configure_players(self, x:Player, o:Player):
+        """ 
+        Setter for players.
+        @param x: Player X.
+        @param o: Player O.
+        """
+        self.__sym2players['X'] = x
+        self.__sym2players['O'] = o
+        self.__players2sym[str(x)] = 'X'
+        self.__players2sym[str(o)] = 'O'
+
+    def is_game_over(self, state:List[str]) -> bool:
         """
         Checks if given state is a terminal state.
         @param state: State to examine.
-        @return: Returns a tuple wherein the first element
-                 true if this state is terminal and false
-                 otherwise. The second element is what 
-                 kind of terminal state this is, if it
-                 is a terminal state at all. This can be 
-                 'winx', 'wino', 'draw' or ''.
+        @return: Returns true if this state is terminal 
+                 and false otherwise.
         """
         # This state is terminal if any of the following
         # conditions are true.
@@ -261,12 +268,12 @@ class WorldTTT:
         # 2. Player O has won.
         # 3. The board has no empty positions.
         if (self.__is_winner(state, 'X')):
-            return True, 'winx'
+            return True
         elif (self.__is_winner(state, 'O')):
-            return True, 'wino'
-        elif sum(row.count(' ') for row in state) == 0:
-            return True, 'draw'
-        return False, ''
+            return True
+        elif sum(row.count('#') for row in state) == 0:
+            return True
+        return False
 
     def get_next_states(self, state:Tuple, sym:set) -> List[Tuple]:
         """
@@ -283,7 +290,7 @@ class WorldTTT:
             row = state[i]
             for j in range(len(row)):
                 cell = row[j]
-                if cell == ' ':
+                if cell == '#':
                     new_state = [list(row) for row in state]
                     new_state[i][j] = sym
                     new_state = tuple([tuple(row) for row in new_state])
@@ -306,7 +313,7 @@ class WorldTTT:
         # looking to place their symbol is
         # not empty, then this move is not
         # possible.
-        if state[action[0]][action[1]] != ' ':
+        if state[action[0]][action[1]] != '#':
             return False, None
         next_state = tuple_to_list_2d(state)
         next_state[action[0]][action[1]] = sym
@@ -316,23 +323,6 @@ class WorldTTT:
             return False, None
         return True, list_to_tuple_2d(next_state)
     
-    def __str__(self, pretty=False):
-        """ 
-        Returns the current world state with
-        world board and the player whose turn 
-        it is next as a string.
-        @param pretty: Whether or not the string should include
-                       spaces that make it easy to read 
-                       (false by default).
-        @param return: String of the world as it is now.
-        """
-        to_return = ''
-        for row in self.board:
-            to_return += " ".join(row)
-            to_return += "\n" if pretty else " | "
-        to_return += f"next turn = {self.next_turn}"
-        return to_return
-
     def state_eval(self, state:Tuple, sym:str, is_my_turn_next:bool) -> float:
         """ 
         Computes the value of given state. 
@@ -392,6 +382,8 @@ class WorldTTT:
                             to be logged into a file.
         @return outcome: Game outcome.
         """
+        global LOGGER
+
         if None in self.__sym2players.values():
             raise Exception('No players. Please configure players.')
         
@@ -405,32 +397,35 @@ class WorldTTT:
         self.next_turn = 'X'
 
         print(f"Playing game {idx}.")
-        logging.info(f"Game {idx}")
+        LOGGER.info(f"Playing game {idx}.")
 
-        if print_moves: # Print starting state if required.
-            print(self.__str__(pretty=True))
-        if log_moves: # Log starting state if required.
-            logging.info(self.__str__(pretty=False))
+        if print_moves: # Print world state if required.
+            print(self.get_world_str(pretty=True))
+        if log_moves: # Log world state if required.
+            LOGGER.info(self.get_world_str(pretty=False))
 
         # Keep making moves until a terminal
         # state is reached.
-        while (not self.is_game_over(self.board)):
+        is_game_over = self.is_game_over(self.board)
+        while (not is_game_over):
             p = self.__sym2players[self.next_turn] # Current player.
-            move = p.strategy.get_move(self.board)
+            move = p.strategy.get_move(self.board, p.symbol)
             outcome[p.symbol]['avg_seconds_per_move'] = (
                 outcome[p.symbol]['avg_seconds_per_move'] 
                 + move['seconds']
             ) / 2
             action_idx = move['f_out']
             action_pos = self.actions[action_idx]
-            self.board[action_pos] = p.symbol
-            self.next_turn = get_opposite_symbol(self.next_turn)
+            self.__make_move(action_pos, p.symbol)
             outcome[p.symbol]['num_moves'] += 1
 
             if print_moves: # Print move if required.
-                print(self.__str__(pretty=True))
+                print(self.get_world_str(pretty=True))
             if log_moves: # Log move if required.
-                logging.info(self.__str__(pretty=False))
+                LOGGER.info(self.get_world_str(pretty=False))
+
+            # Determine if the game is over.
+            is_game_over = self.is_game_over(self.board)
 
         # Determine winner if any.
         if self.__is_winner(self.board, 'X'):
@@ -445,7 +440,7 @@ class WorldTTT:
 
         return outcome
 
-    def play(self, id:str="", out_config:dict={}, num_games:int=1):
+    def play(self, id:str, out_config:dict={}, num_games:int=1):
         """ 
         Conducts one or more game sessions.
         @param id: String that identifies this play session.
@@ -462,13 +457,14 @@ class WorldTTT:
         @return game_metrics: Data about games that
                               were played.
         """
+        global LOGGER
 
         # Define default output configurations.
         out_config_default = {
             'print_moves': False,
             'print_metrics_game': False,
             'print_metrics_session': True,
-            'log_folder': f'./logs',
+            'log_folder': f'./__logs',
             'log_moves': False,
             'log_metrics_game': False,
             'log_metrics_session': True
@@ -476,11 +472,13 @@ class WorldTTT:
         for k in out_config_default.keys():
             if k in out_config:
                 out_config_default[k] = out_config[k]
-        if not os.path.exists(out_config['log_folder']):
-            os.makedirs(out_config['log_folder'])
+        out_config = out_config_default
 
         # Prepare to log play outcome.
+        if not os.path.exists(out_config['log_folder']):
+            os.makedirs(out_config['log_folder'])
         log_filename = f"{id}_ttt_{get_datetime_id()}"
+
         logging.basicConfig(
             filename=f'{out_config['log_folder']}/{log_filename}.log', 
             level=logging.INFO, 
@@ -493,26 +491,25 @@ class WorldTTT:
             'O':  {'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0},
             'num_draws': 0,
             'num_games': num_games,
-            'seconds': []
+            'seconds': 0
         }
         
         print(f"\nStarting Tic Tac Toe play session '{id}'.")
-        logging.info(f"\nTic Tac Toe play session '{id}'.")
+        LOGGER.info(f"\nTic Tac Toe play session '{id}'.")
         
         # Play specified no. of games.
         for i in range(num_games):
-            
+
             # Play one game.
             outcome = self.__play1game(
                 idx=i+1,
                 print_moves=out_config['print_moves'],
-                print_metrics=out_config['print_metrics'],
+                print_metrics=out_config['print_metrics_game'],
                 log_moves=out_config['log_moves'],
-                log_metrics=out_config['log_metrics'],
+                log_metrics=out_config['log_metrics_game'],
             )
 
             # X's average performance.
-            outcome_all_games['seconds'].append(outcome['seconds'])
             outcome_all_games['X']['won'] += outcome['f_out']['X']['won']
             outcome_all_games['X']['lost'] += outcome['f_out']['X']['lost']
             outcome_all_games['X']['num_moves'] += outcome['f_out']['X']['num_moves']
@@ -543,11 +540,19 @@ class WorldTTT:
         ))
 
         print(f"Play session '{id}' complete.")
-        logging.info(f"Play session '{id}' complete.")
+        LOGGER.info(f"Play session '{id}' complete.")
 
         # Print session metrics if required.
         if out_config['print_metrics_session']:
             print(f"Session metics = {outcome_all_games}.")
         # Log session metrics if required.
         if out_config['log_metrics_session']:
-            logging.info(f"Session metics = {outcome_all_games}.")
+            LOGGER.info(f"Session metics = {outcome_all_games}.")
+
+        # # Unlink logger.
+        # for handle in LOGGER.handlers[:]:
+        #     if isinstance(handle, logging.FileHandler): 
+        #         handle.close()
+        #         LOGGER.removeHandler(handle)
+
+        logging.shutdown(LOGGER.handlers)

@@ -2,6 +2,7 @@
 
 # Imports.
 from strategy import Strategy
+from utility import track_time
 from typing import Callable, Tuple, List
 
 class MiniMax(Strategy):
@@ -115,7 +116,8 @@ class MiniMax(Strategy):
                         # Thus, prune further branches from this point.
                         break
             return min_val_pos
-        
+    
+    @track_time
     def get_move(
         self, state, is_max_player:bool, 
         depth:float = None, alpha_beta:tuple = None

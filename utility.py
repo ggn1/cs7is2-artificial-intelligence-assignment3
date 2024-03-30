@@ -1,5 +1,6 @@
 ### This file contains common functions that all files can use.
 import time
+import traceback
 from typing import Callable
 from datetime import datetime
 
@@ -39,6 +40,7 @@ def track_time(f:Callable):
                 to_return['f_out'] = res 
             except Exception as e:
                 print(f"Exception! {f.__name__}(...): {e}")
+                print(traceback.format_exc())
         except KeyboardInterrupt:
             print(f"Keyboard Interrupt! {f.__name__}(...)")
         finally:

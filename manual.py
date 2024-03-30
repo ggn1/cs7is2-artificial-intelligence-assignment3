@@ -3,6 +3,7 @@
 # Imports.
 from strategy import Strategy
 from typing import List, Tuple
+from utility import track_time
 
 class Manual(Strategy):
     """
@@ -17,11 +18,12 @@ class Manual(Strategy):
         self.name = 'Manual'
         self.actions = actions
 
-    def get_move(self, state=None):
+    @track_time
+    def get_move(self, *args, **kwargs):
         """ 
         Returns the best action to take as per user input. 
         @return: Index of the action to take.
         """
         pos = input('Enter row and column separated by a space: ')
         pos = tuple([int(c) for c in pos.split()])
-        return self.actions.index(tuple)
+        return self.actions.index(pos)

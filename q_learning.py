@@ -1,12 +1,13 @@
-### This file defines an agent that will learn
-### to play the given game via tabular Q learning.
+### This file defines the tabular Q learning strategy.
 
 # Imports.
 import random
 import numpy as np
 from typing import Callable
+from strategy import Strategy
+from utility import track_time
 
-class TabQLearning:
+class TabQLearning(Strategy):
     """ 
     An agent that learns to play the given game 
     via reinforcement learning, specifically 
@@ -39,6 +40,7 @@ class TabQLearning:
                                at when given action a is executed from
                                given state s.
         """
+        self.name = 'TabQLearning'
         self.gamma = discount_factor
         self.alpha = learning_rate
         self.epsilon = change_threshold
@@ -65,53 +67,69 @@ class TabQLearning:
         print('Learning ...')
         e = max_episodes # Keep track of no. of episodes left.
         q_diff = float('inf') # How different the q table is between 2 episodes.
-        # 1. Loop for each episode until either
-        #    the algorithm has converged (change in
-        #    Q table values between 2 episodes < 
-        #    change threshold) or the maximum allowed
-        #    no. of episodes has been reached.
-        while e != 0 or q_diff > self.epsilon: 
-            # 2. Pick a random start state.
-            s = random.randint(0, self.num_states-1) # inclusive
-            # 3. Do while a terminal state has not yet been reached.
-            while not self.is_game_over(s):
-                # 4. From a list of possible actions from this 
-                #    state s, pick a random one.
-                possible_actions = self.get_next_states(s)
-                a = possible_actions[random.randint(0, len(possible_actions)-1)]
-                # 5. Compute Q and R value of executing action a in this state s.
-                q_s_a = self.q_tab[s][a]
-                r_s_a = self.r_tab[s][a]
-                # 6. Get next state arrived at.
-                sn = self.get_next_state(s, a)
-                # 7. Get highest Q value among that of all
-                #    (next state, possible next action) pairs.
-                max_q_sn_an = float('-inf')
-                for an in self.get_next_states(sn):
-                    q_sn_an = self.q_tab[sn][an]
-                    if q_sn_an > max_q_sn_an: 
-                        max_q_sn_an = q_sn_an
-                # 8. Compute the following formula and update Q value:
-                #    Q(s, a) <-- (1 - alpha) Q(s, a) + alpha [
-                #       R(s, a) + { gamma x max_an[ Q(sn, an) ] }
-                #    ]
-                self.q_tab[s][a] = (
-                    ((1 - self.alpha) * q_s_a) + 
-                    (self.alpha * (r_s_a + (self.gamma * max_q_sn_an)))
-                )
-                # 9. Set the next state to be the new current state.
-                s = sn
-            e -= 1 # Reduce no. of episodes left.
-            print(f'Episode {e} done.')
-        print('All done.')
+        max_states_visited = 0 # The maximum no. of states that
+                               # were visited in any episode.
+        try:
+            # 1. Loop for each episode until either
+            #    the algorithm has converged (change in
+            #    Q table values between 2 episodes < 
+            #    change threshold) or the maximum allowed
+            #    no. of episodes has been reached.
+            while e != 0 or q_diff > self.epsilon: 
+                # 2. Pick a random start state.
+                s = random.randint(0, self.num_states-1) # inclusive
+                # 3. Do while a terminal state has not yet been reached.
+                num_states_visited = 0 # No. of states visited.
+                while not self.is_game_over(s):
+                    # 4. From a list of possible actions from this 
+                    #    state s, pick a random one.
+                    possible_state_actions = self.get_next_states(s)
+                    a = possible_state_actions[
+                        random.randint(0, len(possible_state_actions)-1)
+                    ][1]
+                    # 5. Compute Q and R value of executing action a in this state s.
+                    q_s_a = self.q_tab[s][a]
+                    r_s_a = self.r_tab[s][a]
+                    # 6. Get next state arrived at.
+                    sn = self.get_next_state(s, a)
+                    # 7. Get highest Q value among that of all
+                    #    (next state, possible next action) pairs.
+                    max_q_sn_an = float('-inf')
+                    for snn_an in self.get_next_states(sn):
+                        q_sn_an = self.q_tab[sn][snn_an[1]]
+                        if q_sn_an > max_q_sn_an: 
+                            max_q_sn_an = q_sn_an
+                    # 8. Compute the following formula and update Q value:
+                    #    Q(s, a) <-- (1 - alpha) Q(s, a) + alpha [
+                    #       R(s, a) + { gamma x max_an[ Q(sn, an) ] }
+                    #    ]
+                    self.q_tab[s][a] = (
+                        ((1 - self.alpha) * q_s_a) + 
+                        (self.alpha * (r_s_a + (self.gamma * max_q_sn_an)))
+                    )
+                    # 9. Set the next state to be the new current state.
+                    s = sn
 
-    def get_move(self, s):
+                    # Update performance metric.
+                    num_states_visited += 1
+                    max_states_visited = max(
+                        num_states_visited, 
+                        max_states_visited
+                    )
+                e -= 1 # Reduce no. of episodes left.
+                print(f'Episode {e} done.')
+            print('All done.')
+        except KeyboardInterrupt:
+            return ('Keyboard Interrupt', max_states_visited)
+
+    @track_time
+    def get_move(self, state):
         """ 
         Based on given state and current
         Q table, returns the action that 
         maximizes the Q value.
-        @param s: Given state from which a move
-                  is to be made.
-        @param return: Best move from given state.
+        @param state: Given state from which a move
+                      is to be made.
+        @param return: Index of the action to take.
         """
-        return np.argmax(self.q_tab[s])
+        return np.argmax(self.q_tab[state])

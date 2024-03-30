@@ -1,23 +1,38 @@
 ### This file shall define the Tic Tac Toe world.
 
+import os
+import logging
 import itertools
 import numpy as np
+from strategy import Strategy
+from utility import track_time
 from utility import print_debug
+from utility import get_datetime_id
 from typing import List, Tuple, Dict
-from utility import tuple_to_list_2d, list_to_tuple_2d
+from utility import tuple_to_list_2d
+from utility import list_to_tuple_2d
+from utility import get_opposite_symbol
 
-class PlayerTTT:
+class Player:
     """
     This class defines a tic tac toe player.
     """
 
-    def __init__(self, symbol:str):
+    def __init__(self, symbol:str, strategy:Strategy):
         """
         Constructor.
         @param symbol: This player's symbol.
+        @param strategy: The strategy as per which this
+                         player will make moves. This can
+                         be an object of the TabQLearning, 
+                         MiniMax or default Strategy class.
         """
         self.symbol = symbol
+        self.strategy = strategy
 
+    def __str__(self) -> str:
+        """ Returns a string representing this player. """
+        return f"{self.symbol}_{self.strategy.name}"
 
 class WorldTTT:
     """ 
@@ -28,34 +43,46 @@ class WorldTTT:
 
     def __init__(self):
         """ Constructor. """
-        self.board = [
+        self.board = self.__init_board()
+        self.__sym2players = {'X': None, 'O': None}
+        self.__players2sym = {}
+        self.next_turn = 'X' # Player X always goes first.
+        self.actions = self.__init_actions()
+        self.states, self.terminal_states = self.__init_states()
+
+    def __init_board(self) -> List[str]:
+        """ Returns an empty game board. """
+        return [
             [' ', ' ', ' '],
             [' ', ' ', ' '],
             [' ', ' ', ' ']
         ]
-        self.players = {
-            'X': None,
-            'O': None
-        }
-        self.next_turn = 'X'
-        self.actions = self.__init_actions()
-        self.states, self.terminal_states = self.__init_states()
 
-    def __init_actions(self) -> Dict[Tuple[int, int], int]:
+    def configure_players(self, x:Player, o:Player):
+        """ 
+        Setter for players.
+        @param x: Player X.
+        @param o: Player O.
+        """
+        self.__sym2players['X'] = x
+        self.__sym2players['O'] = o
+        self.__players2sym[str(x)] = 'X'
+        self.__players2sym[str(o)] = 'O'
+
+    def __init_actions(self) -> List[Tuple[int, int]]:
         """ 
         This function identifies and returns
         all actions that are possible.
         @return: A dictionary of actions 
                  mapped to their index number.
         """
-        actions = {}
+        actions = []
         num_rows = len(self.board)
         num_columns = len(self.board[0])
         i = 0 # Action counter.
         for r in range(num_rows):
             for c in range(num_columns):
-                actions[(r, c)] = i + 1
-                i += 1
+                actions.append((r, c))
         return actions
 
     def __is_winner(self, state:Tuple, sym:str) -> bool:
@@ -115,16 +142,6 @@ class WorldTTT:
         # of the above rules.
         return True
 
-    def __get_opposite_symbol(self, sym:str) -> bool:
-        """ 
-        Given a symbol, get's that of the opponent. 
-        @param sym: This player's symbol.
-        @return: Opponent's symbol.
-        """
-        if sym == "X": return "O"
-        elif sym == "O": return "X"
-        else: raise Exception(f"Invalid symbol '{sym}'.")
-
     def __state_to_num(self, state:Tuple, sym:str) -> List[int]:
         """
         Given a state as a list of string symbols, 
@@ -139,7 +156,7 @@ class WorldTTT:
         state_np = np.array(state)
         state_np[state_np == ' '] = -1
         state_np[state_np == sym] = 1
-        state_np[state_np == self.__get_opposite_symbol(sym)] = 0
+        state_np[state_np == get_opposite_symbol(sym)] = 0
         return state_np.tolist()
 
     def __num_to_state(self, num:List[int], sym:str) -> Tuple:
@@ -155,7 +172,7 @@ class WorldTTT:
         state = np.array(num)
         state[state == -1] = ' '
         state[state == 1] = sym
-        state[state == 0] = self.__get_opposite_symbol(sym)
+        state[state == 0] = get_opposite_symbol(sym)
         return tuple(state.tolist())
 
     def __init_states(self) -> Tuple[Dict[Tuple, int], List[int]]:
@@ -257,7 +274,9 @@ class WorldTTT:
         next. A list of all possible valid states, is returned.
         @param state: Current state.
         @param sym: Symbol of the player who's move it is next.
-        @return: List of all states accessible from current one.
+        @return: List of all (state, action) pairs
+                 corresponding to all states that are accessible 
+                 from the given one.
         """
         next_states = []
         for i in range(len(state)):
@@ -268,7 +287,7 @@ class WorldTTT:
                     new_state = [list(row) for row in state]
                     new_state[i][j] = sym
                     new_state = tuple([tuple(row) for row in new_state])
-                    next_states.append(new_state)
+                    next_states.append((new_state, (i, j)))
         return next_states
     
     def get_next_state(self, state:Tuple, action:Tuple, sym:set) -> Tuple:
@@ -297,6 +316,23 @@ class WorldTTT:
             return False, None
         return True, list_to_tuple_2d(next_state)
     
+    def __str__(self, pretty=False):
+        """ 
+        Returns the current world state with
+        world board and the player whose turn 
+        it is next as a string.
+        @param pretty: Whether or not the string should include
+                       spaces that make it easy to read 
+                       (false by default).
+        @param return: String of the world as it is now.
+        """
+        to_return = ''
+        for row in self.board:
+            to_return += " ".join(row)
+            to_return += "\n" if pretty else " | "
+        to_return += f"next turn = {self.next_turn}"
+        return to_return
+
     def state_eval(self, state:Tuple, sym:str, is_my_turn_next:bool) -> float:
         """ 
         Computes the value of given state. 
@@ -337,3 +373,181 @@ class WorldTTT:
                 if vals.count(3) == 1: return 0.0
                 else: return  5.0
             else: return np.mean(vals) 
+
+    @track_time
+    def __play1game(self, idx:int,
+        print_moves:bool, print_metrics:bool,
+        log_moves:bool, log_metrics:bool
+    ) -> dict:
+        """
+        Conduct one game session.
+        @param idx: Game number.
+        @param print_moves: Whether or not moves of this game
+                            are to be printed to the terminal.
+        @param print_metrics: Whether or not game metrics are
+                              to be printed to the terminal.
+        @param log_metrics: Whether or not game moves are
+                            to be logged into a file.
+        @param log_metrics: Whether or not game metrics are
+                            to be logged into a file.
+        @return outcome: Game outcome.
+        """
+        if None in self.__sym2players.values():
+            raise Exception('No players. Please configure players.')
+        
+        outcome = {
+            'X':  {'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0},
+            'O':  {'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0}
+        }
+
+        # Reset board and first player.
+        self.board = self.__init_board()
+        self.next_turn = 'X'
+
+        print(f"Playing game {idx}.")
+        logging.info(f"Game {idx}")
+
+        if print_moves: # Print starting state if required.
+            print(self.__str__(pretty=True))
+        if log_moves: # Log starting state if required.
+            logging.info(self.__str__(pretty=False))
+
+        # Keep making moves until a terminal
+        # state is reached.
+        while (not self.is_game_over(self.board)):
+            p = self.__sym2players[self.next_turn] # Current player.
+            move = p.strategy.get_move(self.board)
+            outcome[p.symbol]['avg_seconds_per_move'] = (
+                outcome[p.symbol]['avg_seconds_per_move'] 
+                + move['seconds']
+            ) / 2
+            action_idx = move['f_out']
+            action_pos = self.actions[action_idx]
+            self.board[action_pos] = p.symbol
+            self.next_turn = get_opposite_symbol(self.next_turn)
+            outcome[p.symbol]['num_moves'] += 1
+
+            if print_moves: # Print move if required.
+                print(self.__str__(pretty=True))
+            if log_moves: # Log move if required.
+                logging.info(self.__str__(pretty=False))
+
+        # Determine winner if any.
+        if self.__is_winner(self.board, 'X'):
+            outcome['X']['won'] += 1
+        elif self.__is_winner(self.board, 'O'):
+            outcome['O']['won'] += 1
+
+        if print_metrics: # Print game metrics if required.
+            print(f"Game {idx} metics = {outcome}")
+        if log_metrics: # Log game metrics if required.
+            print(f"Game {idx} metics = {outcome}")
+
+        return outcome
+
+    def play(self, id:str="", out_config:dict={}, num_games:int=1):
+        """ 
+        Conducts one or more game sessions.
+        @param id: String that identifies this play session.
+        @param num_games: No. of games to play.
+        @param out_config: The configuration of how results are to be
+                           output (in the terminal or saved into a file).
+                           Expected format = {
+                                "print_moves": bool,
+                                "print_metrics": bool,
+                                "log_folder": str,
+                                "log_moves": bool,
+                                "log_metrics": bool
+                           }
+        @return game_metrics: Data about games that
+                              were played.
+        """
+
+        # Define default output configurations.
+        out_config_default = {
+            'print_moves': False,
+            'print_metrics_game': False,
+            'print_metrics_session': True,
+            'log_folder': f'./logs',
+            'log_moves': False,
+            'log_metrics_game': False,
+            'log_metrics_session': True
+        }
+        for k in out_config_default.keys():
+            if k in out_config:
+                out_config_default[k] = out_config[k]
+        if not os.path.exists(out_config['log_folder']):
+            os.makedirs(out_config['log_folder'])
+
+        # Prepare to log play outcome.
+        log_filename = f"{id}_ttt_{get_datetime_id()}"
+        logging.basicConfig(
+            filename=f'{out_config['log_folder']}/{log_filename}.log', 
+            level=logging.INFO, 
+            format='%(message)s'
+        )
+
+        # Average game outcomes for each game.
+        outcome_all_games = {
+            'X':  {'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0},
+            'O':  {'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0},
+            'num_draws': 0,
+            'num_games': num_games,
+            'seconds': []
+        }
+        
+        print(f"\nStarting Tic Tac Toe play session '{id}'.")
+        logging.info(f"\nTic Tac Toe play session '{id}'.")
+        
+        # Play specified no. of games.
+        for i in range(num_games):
+            
+            # Play one game.
+            outcome = self.__play1game(
+                idx=i+1,
+                print_moves=out_config['print_moves'],
+                print_metrics=out_config['print_metrics'],
+                log_moves=out_config['log_moves'],
+                log_metrics=out_config['log_metrics'],
+            )
+
+            # X's average performance.
+            outcome_all_games['seconds'].append(outcome['seconds'])
+            outcome_all_games['X']['won'] += outcome['f_out']['X']['won']
+            outcome_all_games['X']['lost'] += outcome['f_out']['X']['lost']
+            outcome_all_games['X']['num_moves'] += outcome['f_out']['X']['num_moves']
+            outcome_all_games['X']['avg_seconds_per_move'] = (
+                outcome_all_games['X']['avg_seconds_per_move'] + 
+                outcome['f_out']['X']['avg_seconds_per_move']
+            ) / 2
+
+            # O's average performance.
+            outcome_all_games['O']['won'] += outcome['f_out']['O']['won']
+            outcome_all_games['O']['lost'] += outcome['f_out']['O']['lost']
+            outcome_all_games['O']['num_moves'] += outcome['f_out']['O']['num_moves']
+            outcome_all_games['O']['avg_seconds_per_move'] = (
+                outcome_all_games['O']['avg_seconds_per_move'] + 
+                outcome['f_out']['O']['avg_seconds_per_move']
+            ) / 2
+
+            # Average game time taken.
+            outcome_all_games['seconds'] = (
+                outcome_all_games['seconds'] +
+                outcome['seconds']
+            ) / 2
+
+        #  Determine no. of draws.
+        outcome_all_games['num_draws'] = (num_games - (
+            outcome_all_games['X']['won']
+            + outcome_all_games['O']['won']
+        ))
+
+        print(f"Play session '{id}' complete.")
+        logging.info(f"Play session '{id}' complete.")
+
+        # Print session metrics if required.
+        if out_config['print_metrics_session']:
+            print(f"Session metics = {outcome_all_games}.")
+        # Log session metrics if required.
+        if out_config['log_metrics_session']:
+            logging.info(f"Session metics = {outcome_all_games}.")

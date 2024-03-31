@@ -203,4 +203,4 @@ class Strategy:
             # Return a random free position.
             pos = self.get_random_free_pos(state)
             
-        return self.actions.index(tuple(pos))
+        return self.actions.index((pos[0], pos[1], sym_me))

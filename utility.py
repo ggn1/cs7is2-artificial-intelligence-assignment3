@@ -1,8 +1,9 @@
 ### This file contains common functions that all files can use.
 import time
 import traceback
-from typing import Callable
+import numpy as np
 from datetime import datetime
+from typing import Callable, Dict
 
 def get_datetime_id(dt:datetime=None) -> str:
     """
@@ -72,6 +73,34 @@ def tuple_to_list_2d(t:tuple) -> list:
     """
     return [list(e) for e in t]
 
+def state_str_to_num(state_str:np.ndarray, sym_map:Dict[str, int]) -> list:
+    """
+    Given a state with symbols as string,
+    returns one with symbols replaced by
+    numbers as per given mapping.
+    @param state_str: Given state with string elements.
+    @param sym_map: A mapping of string symbol to
+                    desired number.
+    """
+    for k, v in sym_map.items():
+        state_str[state_str == k] = str(v)
+    state_num = state_str.astype(int)
+    return state_num.tolist()
+
+def state_num_to_str(state_num:np.ndarray, sym_map:Dict[int, str]) -> list:
+    """
+    Given a state with symbols as numbers,
+    returns one with symbols replaced by
+    strings as per given mapping.
+    @param state_str: Given state with string elements.
+    @param sym_map: A mapping of integer to 
+                    desired string symbol.
+    """
+    state_str = state_num.astype(str)
+    for k, v in sym_map.items():
+        state_str[state_str == str(k)] = v
+    return state_str.tolist()
+   
 def get_opposite_symbol(sym:str) -> str:
     """ 
     Given a symbol, get's that of the opponent. 
@@ -80,4 +109,6 @@ def get_opposite_symbol(sym:str) -> str:
     """
     if sym == "X": return "O"
     elif sym == "O": return "X"
+    elif sym == 'R': return "Y"
+    elif sym == "Y": return "R"
     raise Exception(f"Invalid symbol '{sym}'.")

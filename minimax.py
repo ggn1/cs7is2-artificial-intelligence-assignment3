@@ -58,7 +58,7 @@ class MiniMax(Strategy):
     def minimax(self, 
         state, 
         is_max_player:bool,
-        actions:List[Tuple[int, int]],
+        actions:List[Tuple[int, int, str]],
         depth:float=None, 
         alpha_beta:tuple=None,
     ) -> Tuple:

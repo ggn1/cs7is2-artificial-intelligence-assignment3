@@ -19,11 +19,12 @@ class Manual(Strategy):
         self.actions = actions
 
     @track_time
-    def get_move(self, *args, **kwargs):
+    def get_move(self, sym:str, *args, **kwargs):
         """ 
         Returns the best action to take as per user input. 
+        @param: This player's symbol.
         @return: Index of the action to take.
         """
         pos = input('Enter row and column separated by a space: ')
-        pos = tuple([int(c) for c in pos.split()])
-        return self.actions.index(pos)
+        action = tuple([int(c) for c in pos.split()] + [sym])
+        return self.actions.index(action)

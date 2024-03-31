@@ -201,8 +201,6 @@ class WorldTTT:
         count_free = s_list.count(-1) # Free spots.
         count_ideal_free = 3 - count_me
 
-        # print_debug(f'{s}, {count_me}, {count_opp}, {count_free}, {count_ideal_free}')
-
         # For each possible set, value returned would be as follows.
         # -1  1  0 = 1    -1 -1  0 =  0    1  1  1 =  4
         # -1 -1 -1 = 0    -1  1  1 =  3    0  0  0 = -3
@@ -341,17 +339,17 @@ class WorldTTT:
         for row in state: 
             vals.append(self.__get_set_val(row, sym))
         # Diagonal value.
-        vals.append(self.__get_set_val(np.diag(state), sym))
+        vals.append(self.__get_set_val(state.diagonal(), sym))
         # Column values.
         for col in state.T: 
             vals.append(self.__get_set_val(col, sym))
         # Anti diagonal value.
-        vals.append(self.__get_set_val(np.diag(state.T), sym))
+        vals.append(self.__get_set_val(np.fliplr(state).diagonal(), sym))
 
         # Compute state value.
         if 4 in vals: return 10.0
         elif -3 in vals: return -10.0
-        elif is_my_turn_next:
+        elif is_my_turn_next: # It's my turn next.
             if 3 in vals: return 5.0
             elif -1 in vals: 
                 if vals.count(-1) == 1: return 1.0
@@ -409,7 +407,7 @@ class WorldTTT:
         is_game_over = self.is_game_over(self.board)
         while (not is_game_over):
             p = self.__sym2players[self.next_turn] # Current player.
-            move = p.strategy.get_move(self.board, p.symbol)
+            move = p.strategy.get_move(state=self.board, sym=p.symbol)
             outcome[p.symbol]['avg_seconds_per_move'] = (
                 outcome[p.symbol]['avg_seconds_per_move'] 
                 + move['seconds']

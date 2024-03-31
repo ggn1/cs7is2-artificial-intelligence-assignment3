@@ -77,7 +77,7 @@ class Strategy:
         return random.choice(empty_spots)
     
     @track_time
-    def get_move(self, state:Tuple, sym:str):
+    def get_move(self, state:Tuple, sym:str, *args, **kwargs):
         """ 
         Give a board position returns a
         position on the board where the player

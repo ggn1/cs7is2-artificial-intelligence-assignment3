@@ -263,16 +263,16 @@ class WorldTTT:
                     new_state = [list(row) for row in state]
                     new_state[i][j] = sym
                     new_state = tuple([tuple(row) for row in new_state])
-                    next_states.append((new_state, (i, j, sym)))
+                    if self.__is_legal(new_state):
+                        next_states.append((new_state, (i, j, sym)))
         return next_states
     
-    def get_next_state(self, state:Tuple, action:Tuple, sym:set) -> Tuple:
+    def get_next_state(self, state:Tuple, action:Tuple[int, int, str]) -> Tuple:
         """
         Given a state, the symbol of the player who is to go
         next and the action to  A list of all possible valid states, is returned.
         @param state: Current state.
         @param action: Action to take.
-        @sym: This player's symbol.
         @return: A tuple wherein the first element 
                  is whether this move is possible and 
                  the second one is the next state
@@ -285,7 +285,7 @@ class WorldTTT:
         if state[action[0]][action[1]] != '#':
             return False, None
         next_state = tuple_to_list_2d(state)
-        next_state[action[0]][action[1]] = sym
+        next_state[action[0]][action[1]] = action[2]
         # If the resulting next state is not
         # legal, then this move is not possible.
         if not self.__is_legal(next_state):
@@ -333,6 +333,48 @@ class WorldTTT:
                 else: return  5.0
             else: return np.mean(vals) 
 
+    def get_reward_table(self) -> list:
+        """
+        Generates and returns a table consisting of 
+        no. of rows = no. of states and no. of columns 
+        = no. of actions. The content of the table = 
+        2D matrix at any position [r, c] = value of
+        the resulting state arrived at upon taking 
+        action c while in state r. If the outcome
+        of taking action is an invalid state, then 
+        the corresponding position shall have a value 
+        -100 to indicate this.
+        @return: The rewards table as a numpy array.
+        """
+        num_states = len(self.states) # rows
+        num_actions = len(self.actions) # columns
+        
+        # Initialize the rewards table 
+        # to contain all -100s.
+        r_tab = [ 
+            [-100] * num_actions 
+            for _ in range(num_states)
+        ]
+
+        # Fill reward table.
+        for r in range(num_states):
+            state = self.states[r]
+            for c in range(num_actions):
+                action = self.actions[c]
+                is_possible, next_state = self.get_next_state(state, action)
+                # Add value of next state into the 
+                # corresponding cell of the reward
+                # table if and only if the next state
+                # is a valid one.
+                if is_possible: 
+                    r_tab[r][c] = self.state_eval(
+                        state = next_state,
+                        sym = action[2],
+                        is_my_turn_next = False
+                    )
+        
+        return r_tab
+
     @track_time
     def __play1game(self, idx:int,
         print_moves:bool, print_metrics:bool,
@@ -378,7 +420,10 @@ class WorldTTT:
         is_game_over = self.is_game_over(self.board)
         while (not is_game_over):
             p = self.__sym2players[self.next_turn] # Current player.
-            move = p.strategy.get_move(state=self.board, sym=p.symbol)
+            move = p.strategy.get_move(
+                state=list_to_tuple_2d(self.board), 
+                sym=p.symbol
+            )
             outcome[p.symbol]['avg_seconds_per_move'] = (
                 outcome[p.symbol]['avg_seconds_per_move'] 
                 + move['seconds']

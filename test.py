@@ -15,23 +15,25 @@ from utility import get_opposite_symbol
 
 if __name__ == "__main__":
     world_ttt = WorldTTT()
-    strategy_default = Strategy(world_ttt.actions)
+    # strategy_default = Strategy(world_ttt.actions)
     strategy_manual = Manual(world_ttt.actions)
     strategy_minimax = MiniMax(
         is_game_over=world_ttt.is_game_over,
         state_eval=world_ttt.state_eval,
         get_next_states=world_ttt.get_next_states,
         actions=world_ttt.actions,
-        alpha_beta=False
+        alpha_beta=False,
+        depth=50,
     )
-    p1 = Player(symbol='X', strategy=strategy_minimax)
-    p2 = Player(symbol='O', strategy=strategy_manual)
+    p1 = Player(symbol='X', strategy=strategy_manual)
+    p2 = Player(symbol='O', strategy=strategy_minimax)
+    
     world_ttt.configure_players(x=p1, o=p2)
-    world_ttt.play(id="test", out_config={
-        'print_metrics_game': False,
+    world_ttt.play(id="x_manual_o_minimax", out_config={
+        'print_metrics_game': True,
         'print_metrics_session':  True,
         'print_moves': True,
-        'log_moves': False,
-        'log_metrics_game': False,
+        'log_moves': True,
+        'log_metrics_game': True,
         'log_metrics_session': True
     }, num_games=1)

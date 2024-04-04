@@ -19,7 +19,7 @@ class TabQLearning(Strategy):
     """
 
     def __init__(self, 
-        r_tab:np.ndarray,
+        get_reward:np.ndarray,
         is_game_over:Callable,
         get_next_states:Callable,
         get_next_state:Callable,

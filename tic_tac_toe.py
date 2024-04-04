@@ -25,20 +25,24 @@ class WorldTTT:
 
     def __init__(self):
         """ Constructor. """
-        self.board = self.__init_board()
-        self.__sym2players = {'X': None, 'O': None}
-        self.__players2sym = {}
-        self.next_turn = 'X' # Player X always goes first.
-        self.actions = self.__init_actions()
-        self.states, self.terminal_states_idx = self.__init_states()
+        self.board = None
+        self.player1 = None
+        self.player2 = None
+        self.next_turn = None
+
+        # self.board = self.__init_board()
+        # self.__sym2players = {'X': None, 'O': None}
+        # self.__players2sym = {}
+        # self.next_turn = 'X' # Player X always goes first.
+        # self.actions = self.__init_actions()
+        # self.states, self.terminal_states_idx = self.__init_states()
 
     def __init_board(self) -> List[str]:
-        """ Returns an empty game board. """
-        return [
-            ['#', '#', '#'],
-            ['#', '#', '#'],
-            ['#', '#', '#']
-        ]
+        """
+        Initializes an empty game board. Symbol
+        "#" => empty.
+        """
+        self.board = np.full((3, 3), "#")
 
     def __init_actions(self) -> List[Tuple[int, int, str]]:
         """ 
@@ -224,10 +228,10 @@ class WorldTTT:
         self.__players2sym[str(x)] = 'X'
         self.__players2sym[str(o)] = 'O'
 
-    def is_game_over(self, state:List[str]) -> bool:
+    def is_game_over(self, state_idx:int) -> bool:
         """
         Checks if given state is a terminal state.
-        @param state: State to examine.
+        @param state_idx: Index of state to examine.
         @return: Returns true if this state is terminal 
                  and false otherwise.
         """
@@ -236,6 +240,7 @@ class WorldTTT:
         # 1. Player X has won.
         # 2. Player O has won.
         # 3. The board has no empty positions.
+        state = self.states[state_idx]
         if (self.__is_winner(state, 'X')):
             return True
         elif (self.__is_winner(state, 'O')):
@@ -244,7 +249,7 @@ class WorldTTT:
             return True
         return False
 
-    def get_next_states(self, state:Tuple, sym:set) -> List[Tuple]:
+    def get_next_states(self, state_idx:int, sym:str) -> List[Tuple]:
         """
         Given a state and the symbol of the player who is to go
         next. A list of all possible valid states, is returned.
@@ -254,6 +259,7 @@ class WorldTTT:
                  corresponding to all states that are accessible 
                  from the given one.
         """
+        state = self.states[state_idx]
         next_states = []
         for i in range(len(state)):
             row = state[i]
@@ -267,12 +273,12 @@ class WorldTTT:
                         next_states.append((new_state, (i, j, sym)))
         return next_states
     
-    def get_next_state(self, state:Tuple, action:Tuple[int, int, str]) -> Tuple:
+    def get_next_state(self, state_idx:int, action_idx:int) -> Tuple:
         """
         Given a state, the symbol of the player who is to go
         next and the action to  A list of all possible valid states, is returned.
-        @param state: Current state.
-        @param action: Action to take.
+        @param state_idx: Index of current state.
+        @param action_idx: Index of action to take.
         @return: A tuple wherein the first element 
                  is whether this move is possible and 
                  the second one is the next state
@@ -282,6 +288,8 @@ class WorldTTT:
         # looking to place their symbol is
         # not empty, then this move is not
         # possible.
+        state = self.states[state_idx]
+        action = self.actions[action_idx]
         if state[action[0]][action[1]] != '#':
             return False, None
         next_state = tuple_to_list_2d(state)
@@ -292,16 +300,16 @@ class WorldTTT:
             return False, None
         return True, list_to_tuple_2d(next_state)
     
-    def state_eval(self, state:Tuple, sym:str, is_my_turn_next:bool) -> float:
+    def state_eval(self, state_idx:Tuple, sym:str, is_my_turn_next:bool) -> float:
         """ 
         Computes the value of given state. 
-        @param state: State to evaluate.
+        @param state_idx: Index of state to evaluate.
         @param sym: The symbol of this player.
         @param is_my_turn_next: True if the next turn is this
                                 player's and false otherwise.
-        @param: Value of this state.
+        @return: Value of this state.
         """
-        state = np.array(state) 
+        state = np.array(self.states[state_idx]) 
 
         # Compute value of each of the following:
         # [row0, row1, row2, diag, col0, col1, col2, anti-diag]  
@@ -375,6 +383,28 @@ class WorldTTT:
         
         return r_tab
 
+    def get_reward(self, state_idx:int, action_idx:int) -> int:
+        """
+        Returns the reward of executing a given action 
+        in given state.
+        @param state: Given state.
+        @param action: Given action.
+        @return reward: The value of resulting state. If
+                        this action at state is illegal
+                        or results in an invalid state, then
+                        -100 is returned.
+        """
+        action = self.actions[action_idx]
+        is_possible, next_state = self.get_next_state(state_idx, action_idx)
+        if not is_possible:
+            return -100
+        if is_possible: 
+            return self.state_eval(
+                state = self.states.index[next_state],
+                sym = action[2],
+                is_my_turn_next = False
+            )
+        
     @track_time
     def __play1game(self, idx:int,
         print_moves:bool, print_metrics:bool,

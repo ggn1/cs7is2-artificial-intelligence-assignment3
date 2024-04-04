@@ -40,7 +40,7 @@ if __name__ == "__main__":
     #     #     'choice_count': 10
     #     # }
     # )
-    strategy_tabq.load_qtab(src="./q_tables/gamma0.9alpha0.3episodes1e6.json")
+    strategy_tabq.load_qtab(src="./__q_tables/gamma0.9alpha0.3episodes1e6.json")
     p2 = Player(symbol='O', strategy=strategy_tabq)
 
     # Configure players and play.

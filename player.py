@@ -31,9 +31,12 @@ class Player:
         """ Returns a string representing this player. """
         return f"{self.symbol}_{self.strategy.name}"
     
-    def get_move(self, num_board:np.ndarray):
+    def get_move(self, board:np.ndarray):
         """
         Given current perspective of this player,
         makes a move as per configured strategy.
         """
-        return self.strategy.get_move(num_board)
+        return self.strategy.get_move(
+            board=board, 
+            is_player1=self.is_player1
+        )

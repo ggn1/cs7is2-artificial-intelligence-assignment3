@@ -4,6 +4,7 @@ import logging
 import numpy as np
 from player import Player
 from utility import int2board
+from utility import board2int
 from utility import track_time
 from utility import print_debug
 from utility import get_datetime_id
@@ -269,7 +270,7 @@ class World:
     def get_next_states(self, 
         board, 
         is_player1:bool, 
-        is_my_turn_next:bool
+        # is_my_turn_next:bool
     ) -> list:
         """
         Given the integer representation of a
@@ -281,23 +282,33 @@ class World:
         @param board_int: Game board.
         @param is_player1: Whether player 1 is making 
                            the move.
-        @param is_my_turn_next: Whether next turn is 
-                                this player's.
-        @return: List of states that player one can reach
+        # @param is_my_turn_next: Whether next turn is 
+        #                         this player's.
+        @return: List of 2 tuples where the first 
+                 element is the integer representation of 
+                 a valid state that player one can reach
                  by executing legal actions in player 1's
-                 perspective
+                 perspective and the second element is the 
+                 action that was taken to go to that state.
         """
         if type(board) == int:
             board = int2board(board, self.board.shape)
-        next_state_int_list = []
-        move_player = -1
-        if is_player1: move_player = 1 if is_my_turn_next else 0
-        else: move_player = 0 if is_my_turn_next else 1
-        for action in self.get_actions(is_player1=(move_player==1)):
+        next_state_int_action_list = []
+        # move_player = -1
+        # if is_player1: move_player = 1 if is_my_turn_next else 2
+        # else: move_player = 2 if is_my_turn_next else 1
+        # for action in self.get_actions(is_player1=(move_player==1)):
+        for action in self.get_actions(is_player1):
+            # if not is_my_turn_next:
+            #     board = switch_player_perspective(board)
             next_state_int = self.get_next_state(board, action)
             if next_state_int != -1:
-                next_state_int_list.append(next_state_int)
-        return next_state_int_list
+                # if not is_my_turn_next:
+                #     next_state = int2board(next_state_int, self.board.shape)
+                #     next_state = switch_player_perspective(next_state)
+                #     next_state_int = board2int(next_state)
+                next_state_int_action_list.append((next_state_int, action))
+        return next_state_int_action_list
 
     def make_move(self, action:tuple) -> bool:
         """

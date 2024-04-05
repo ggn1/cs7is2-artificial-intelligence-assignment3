@@ -1,7 +1,7 @@
 ### This file defines the mini max strategy.
 
 # Imports.
-from strategy import Strategy
+from strategies import Strategy
 from utility import track_time
 from utility import print_debug
 from utility import get_opposite_symbol

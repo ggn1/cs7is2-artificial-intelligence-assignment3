@@ -5,7 +5,7 @@ import os
 import json
 import random
 import numpy as np
-from strategy import Strategy
+from strategies import Strategy
 from utility import track_time
 from utility import print_debug
 from typing import Callable, Tuple

@@ -6,7 +6,7 @@ import itertools
 import numpy as np
 from player import Player
 from manual import Manual
-from strategy import Strategy
+from strategies import Strategy
 from datetime import datetime
 from tic_tac_toe import WorldTTT
 from q_learning import TabQLearning

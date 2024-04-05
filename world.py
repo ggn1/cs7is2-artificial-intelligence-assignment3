@@ -1,22 +1,15 @@
 import os
 import json
 import logging
-import itertools
 import numpy as np
 from player import Player
-from strategy import Strategy
 from utility import int2board
-from utility import board2int
 from utility import track_time
 from utility import print_debug
 from utility import get_datetime_id
-from typing import List, Tuple, Dict
-from utility import tuple_to_list_2d
-from utility import list_to_tuple_2d
-from utility import get_row_col_diags
-from utility import get_opposite_symbol
 from utility import get_world_perspective
 from utility import get_player_perspective
+from utility import switch_player_perspective
 
 class World:
     """ 
@@ -37,68 +30,49 @@ class World:
         @param board_size: Size of game board.
         """
         self.name = name
-        self.board = None
-        self.board_player_view = None
-        self.player1sym = player1sym
-        self.player2sym = player2sym
-        self.current_player = None
-        self.next_player = None
+        self.board = None # Board is always from the next player's perspective.
+        self.player_symbols = {1:player1sym, 2:player2sym}
+        self.last_turn = 2
+        self.next_turn = 1
+        self.player1 = None
+        self.player2 = None
         self.__board_size = board_size
         self.logger = logging.getLogger(f"logger_{name}")
-
-    def __init_board(self):
-        """
-        Initializes an empty game board. Symbol
-        "#" => empty.
-        """
-        self.board = np.full(self.__board_size, "#")
-        self.board_player_view = get_player_perspective(
-            board = self.board, 
-            sym = self.player1sym
-        )
-
-    def configure_players(self, player1:Player, player2:Player): 
-        """
-        Sets up players 1 and 2.
-        Resets the game each time new players are
-        configured.
-        @param player1: First player.
-        @param player2: Second player.
-        """
-        if player1.symbol != self.player1sym:
-            raise Exception(
-                "Symbol of player 1 expected"
-                + f" to be {self.player1sym}."
-            )
-        if player2.symbol != self.player2sym:
-            raise Exception(
-                "Symbol of player 2 expected"
-                + f" to be {self.player2sym}."
-            )
-        self.current_player = player1
-        self.next_player = player2
         self.reset_game()
-
-    def reset_game(self): 
-        """
-        Resets the game to the start state.
-        """
-        self.__init_board()
-        self.current_player = self.player1sym
-        self.next_player = self.player2sym
 
     def __switch_players(self):
         """
         Sets current player as next player and 
         next player as current player.
         """
-        temp = self.current_player.copy()
-        self.current_player = self.next_player
-        self.next_player = temp
-        self.board_player_view = get_player_perspective(
+        temp = self.last_turn
+        self.last_turn = self.next_turn
+        self.next_turn = temp
+        self.board = switch_player_perspective(self.board)
+
+    def __str__(self):
+        """ 
+        Returns the current world state with
+        world board and the player whose turn 
+        it is next as a string.
+        @param pretty: Whether or not the string should include
+                       spaces that make it easy to read 
+                       (false by default).
+        @param return: String of the world as it is now.
+        """
+        # Get the board in world perspective,
+        # independent of that of any particular
+        # player.
+        board_world_perspective = get_world_perspective(
             self.board, 
-            sym=self.current_player.symbol
+            self.player_symbols[self.next_turn]
         )
+        to_return = ''
+        for row in board_world_perspective:
+            to_return += " ".join(row)
+            to_return += "\n"
+        to_return += f"next turn = {self.player_symbols[self.next_turn]}"
+        return to_return
 
     def get_actions(self, is_player1:bool) -> list:
         """
@@ -106,7 +80,17 @@ class World:
         @param is_player1: Whether this is player 1 or 2.
         @return: List of all possible actions for this player.
         """
-        pass
+        raise Exception("Not implemented!")
+
+    def is_winner(self, num_board:np.ndarray) -> int:
+        """ 
+        Given a board, return if this player has won.
+        @param num_board: Board containing numbers from this
+                        player's perspective.
+        @param: Returns 1 if this player has won, -1 if the
+                the opponent has one and 0 if no one has won.
+        """
+        raise Exception("Not implemented!")
 
     def is_valid(self, num_board:np.ndarray, is_player1:bool) -> bool:
         """ Given a board, return if it is a valid
@@ -118,17 +102,92 @@ class World:
             @param: Returns false if this is an invalid state and
                     true otherwise.
         """
-        pass
+        raise Exception("Not implemented!")
 
-    def is_winner(self, num_board:np.ndarray) -> int:
-        """ 
-        Given a board, return if this player has won.
-        @param num_board: Board containing numbers from this
-                        player's perspective.
-        @param: Returns 1 if this player has won, -1 if the
-                the opponent has one and 0 if no one has won.
+    def get_next_state(self, board, action:tuple) -> int:
         """
-        pass
+        Given the integer representation of a
+        game board containing numbers
+        as per a given player's perspective,
+        and an action to take, returns an 
+        integer indicative of the resulting
+        next board state. The value -1 is returned
+        if the action is illegal.
+        @param board_int: Current game board from the
+                          perspective of the player who
+                          is going ot execute the given action.
+                          It is assumed that this state is valid.
+        @param action: The action to take.
+        @return: Integer of next board from the perspective
+                 of the player that took the action, or -1.
+        """
+        raise Exception("Not implemented!")
+
+    def state_eval(self, board, is_my_turn_next:bool):
+        """
+        Computes the value of given state. 
+        @param board: Game board from perspective of a player.
+        @param is_my_turn_next: True if the next turn is this
+                                player's and false otherwise.
+        @return: Value of this state.
+        """
+        raise Exception("Not implemented!")
+
+    def is_adjacent_playable_free(self,
+        board:np.ndarray,
+        pos_start:tuple, 
+        pos_end:tuple, 
+        direction:str
+    ):
+        """
+        Computes if there exists at least one spot
+        adjacent to given min and max position
+        on the board such that it is free and is 
+        playable (is filled at bottom).
+        @param board: Board with numbers as per a player's
+                      perspective.
+        @param pos_start: Point on board before
+                        which an adjacent position
+                        shall be searched for.
+        @param pos_end: Point after which an adjacent position
+                        shall be searched for.
+        @param direction: Direction in which to search.
+        @param return: True if such a point is found and false
+                       otherwise.
+        """
+        raise Exception("Not implemented!")
+
+    def configure_players(self, player1:Player, player2:Player): 
+        """
+        Sets up players 1 and 2.
+        Resets the game each time new players are
+        configured.
+        @param player1: First player.
+        @param player2: Second player.
+        """
+        if player1.symbol != self.player_symbols[1]:
+            raise Exception(
+                "Symbol of player 1 expected"
+                + f" to be {self.player_symbols[1]}."
+            )
+        if player2.symbol != self.player_symbols[2]:
+            raise Exception(
+                "Symbol of player 2 expected"
+                + f" to be {self.player_symbols[2]}."
+            )
+        self.player1 = player1
+        self.player2 = player2
+        self.reset_game()
+
+    def reset_game(self): 
+        """
+        Resets the game to the start state.
+        """
+        # Set board to empty board.
+        self.board = np.full(self.__board_size, -1)
+        # Set player 1 to start.
+        self.last_turn = 2
+        self.next_turn = 1
 
     def is_game_over(self, board) -> int:
         """
@@ -139,7 +198,7 @@ class World:
                  has won. 0 => Draw. -1 => Not terminal state.
         """
         if type(board) == int:
-            board = int2board(board)
+            board = int2board(board, self.board.shape)
 
         # Check if either this player or the opponent has won.
         to_return = self.is_winner(board)
@@ -152,24 +211,6 @@ class World:
         # Else this is not a terminal state.
         return -1
 
-    # def world_to_player_view(self, sym:str) -> np.ndarray:
-    #     """
-    #     Returns the state of the world from the 
-    #     perspective of a given player.
-    #     @param sym: Symbol of given player.
-    #     @return: Tuple wherein the first element is the 
-    #              board from the given player's perspective
-    #              with own pieces = 1, opponent's pieces = 0,
-    #              and spaces = -1. The second element is the 
-    #              player to go next.
-    #     """
-    #     sym_me = sym
-    #     sym_opponent = get_opposite_symbol(sym)
-    #     char_to_int = {sym_me: 1, sym_opponent: 0, "#": -1}
-    #     next_turn = char_to_int[self.next_turn]
-    #     player_view = get_player_perspective(board=self.board, sym=sym)
-    #     return player_view, next_turn
-    
     def is_legal(self, num_board:np.ndarray, action:tuple) -> bool:
         """
         Returns whether a given action is legal.
@@ -192,6 +233,39 @@ class World:
         
         return True
 
+    def get_reward(self, board, action:int) -> int:
+        """
+        Returns the reward of executing a given action 
+        in given state.
+        @param board: Game board from the perspective
+                      of a player.
+        @param action: That player's action to take.
+        @return reward: The value of resulting state. If
+                        this action at state is illegal
+                        or results in an invalid state, then
+                        -150 is returned.
+        """
+        if type(board) == int:
+            board = int2board(board, self.board.shape)
+        
+        # Return large negative reward 
+        # if the action is illegal.
+        if not self.is_legal(board, action):
+            return -150
+        
+        # Return large negative reward 
+        # if the resulting state is invalid.
+        next_state = self.get_next_state(board, action)
+        if next_state == -1:
+            return -150
+        
+        # If the move is valid, then
+        # reward = value of resulting state.
+        return self.state_eval(
+            board = next_state,
+            is_my_turn_next = False
+        )
+
     def get_next_states(self, 
         board, 
         is_player1:bool, 
@@ -209,10 +283,12 @@ class World:
                            the move.
         @param is_my_turn_next: Whether next turn is 
                                 this player's.
-        @return: List of reachable states.
+        @return: List of states that player one can reach
+                 by executing legal actions in player 1's
+                 perspective
         """
         if type(board) == int:
-            board = int2board(board)
+            board = int2board(board, self.board.shape)
         next_state_int_list = []
         move_player = -1
         if is_player1: move_player = 1 if is_my_turn_next else 0
@@ -222,31 +298,6 @@ class World:
             if next_state_int != -1:
                 next_state_int_list.append(next_state_int)
         return next_state_int_list
-                
-    def get_next_state(self, board, action:tuple) -> int:
-        """
-        Given the integer representation of a
-        game board containing numbers
-        as per a given player's perspective,
-        and an action to take, returns an 
-        integer indicative of the resulting
-        next board state. The value -1 is returned
-        if the action is illegal.
-        @param board_int: Game board.
-        @param action: The action to take.
-        @return: Integer of next board or -1.
-        """
-        pass
-
-    def state_eval(self, board, is_my_turn_next:bool):
-        """
-        Computes the value of given state. 
-        @param board: Game board from perspective of a player.
-        @param is_my_turn_next: True if the next turn is this
-                                player's and false otherwise.
-        @return: Value of this state.
-        """
-        pass
 
     def make_move(self, action:tuple) -> bool:
         """
@@ -255,67 +306,27 @@ class World:
         @param action: Action to take.
         @return: True if the action was executed and 
                  false otherwise.
-        """
-        is_player1 = action[1] == 1
-        player_sym = self.player1sym if is_player1 else self.player2sym
-        
-        # Only the player whose turn it is now,
+        """        
+        # Only the player whose turn it is next,
         # can make a move.
-        if player_sym != self.current_player.symbol:
+        if action[1] != self.next_turn:
             return False
         
         # If the move is invalid, then
         # this move will not be executed.
-        if not self.is_legal(
-            num_board=self.board_player_view,
-            action=action
-        ): return False
+        if not self.is_legal(self.board, action): 
+            return False
 
         # The next state obtained upon executing
-        # the move is fetched.
-        next_state = self.get_next_state(
-            board = self.board_player_view, 
-            action = action
-        )
-        if self.is_valid(
-            num_board = next_state, 
-            is_player1 = is_player1
-        ):
-            self.board = get_world_perspective(
-                num_board = next_state, 
-                sym = player_sym
-            )
+        # the move as per this player's
+        # perspective, is fetched.
+        next_state = self.get_next_state(self.board, action)
+        if next_state != -1: # The next state is valid.
+            self.board = int2board(next_state, self.board.shape)
             self.__switch_players()
             return True
         else:
             return False
-
-    def get_world_str(self):
-        """ 
-        Returns the current world state with
-        world board and the player whose turn 
-        it is next as a string.
-        @param pretty: Whether or not the string should include
-                       spaces that make it easy to read 
-                       (false by default).
-        @param return: String of the world as it is now.
-        """
-        to_return = ''
-        for row in self.board:
-            to_return += " ".join(row)
-            to_return += "\n"
-        to_return += f"next turn = {self.next_turn}"
-        return to_return
-
-    def is_winner(self, num_board:np.ndarray) -> int:
-        """ 
-        Given a board, return if this player has won.
-        @param num_board: Board containing numbers from this
-                          player's perspective.
-        @param: Returns 1 if this player has won, -1 if the
-                the opponent has one and 0 if no one has won.
-        """
-        raise Exception("Not implemented.")
 
     @track_time
     def play1game(self, 
@@ -337,49 +348,52 @@ class World:
                             to be logged into a file.
         @return outcome: Game outcome.
         """
-        if self.player1sym is None or self.player2sym is None:
+        if self.player1 is None or self.player2 is None:
             raise Exception('No players. Please configure players.')
         
-        outcome = {p.symbol: {
-            {'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0},
-        } for p in [self.player1sym, self.player2sym]}
+        outcome = {sym: {
+            'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0,
+        } for sym in self.player_symbols.values()}
 
         # Reset game.
         self.reset_game()
 
         # Print / log status update.
-        print(f"Playing Game: {self.name} {id} {idx}")
-        self.logger.info(f"Playing Game: {self.name} {id} {idx}")
+        print(f"\nPlaying Game: {self.name} {id} {idx}")
+        self.logger.info(f"\nPlaying Game: {self.name} {id} {idx}")
 
         # Print / log world state if required.
         if print_moves: 
-            print("\n"+self.get_world_str())
+            print("\n" + self.__str__())
         if log_moves:
-            self.logger.info("\n"+self.get_world_str())
+            self.logger.info("\n" + self.__str__())
 
         # Keep making moves until a terminal
         # state is reached.
-
-        while not self.is_game_over(self.board_player_view):
-            move = self.current_player.get_move(self.board_player_view)
-            outcome[self.current_player.symbol]['avg_seconds_per_move'] = (
-                outcome[self.current_player.symbol]['avg_seconds_per_move'] 
-                + move['seconds']
+        while self.is_game_over(self.board) == -1:
+            next_player = self.player1 if self.next_turn == 1 else self.player2
+            move_pos_out = next_player.get_move(self.board)
+            outcome[self.player_symbols[self.next_turn]]['avg_seconds_per_move'] = (
+                outcome[self.player_symbols[self.next_turn]]['avg_seconds_per_move'] 
+                + move_pos_out['seconds']
             ) / 2
-            self.make_move(move['f_out'])
-            outcome[self.current_player.symbol]['num_moves'] += 1
+            move_action = (move_pos_out['f_out'], self.next_turn)
+            is_success = self.make_move(move_action) # Board perspective switched.
+            if not is_success: 
+                print(f"Move {move_action[0]} could not be executed.")
+            outcome[self.player_symbols[self.last_turn]]['num_moves'] += 1
 
             # Print / Log moves if needed.
             if print_moves:
-                print(self.get_world_str())
+                print(self.__str__())
             if log_moves:
-                self.logger.info(self.get_world_str())
+                self.logger.info(self.__str__())
 
         # Determine winner if any.
-        if self.is_winner(self.board_player_view) == 1:
-            outcome[self.current_player.symbol]['won'] += 1
-        elif self.is_winner(self.board_player_view) == -1:
-            outcome[self.next_player.symbol]['won'] += 1
+        if self.is_winner(self.board) == 1:
+            outcome[self.player_symbols[self.next_turn]]['won'] += 1
+        elif self.is_winner(self.board) == -1:
+            outcome[self.player_symbols[self.last_turn]]['won'] += 1
 
         # Print / log game outcome if needed.
         outcome_str = json.dumps(outcome, indent=4)
@@ -425,7 +439,7 @@ class World:
         # Prepare to log play outcomes.
         if not os.path.exists(out_config['log_folder']):
             os.makedirs(out_config['log_folder'])
-        log_filename = f"{id}_ttt_{get_datetime_id()}"
+        log_filename = f"{self.name}_{id}_{get_datetime_id()}"
 
         logging.basicConfig(
             filename=f'{out_config['log_folder']}/{log_filename}.log', 
@@ -434,21 +448,12 @@ class World:
         )
 
         # Average game outcomes for each game.
-        outcome_all_games = {
-            self.player1sym:  {
-                'won': 0, 'lost': 0, 
-                'avg_seconds_per_move': 0, 
-                'num_moves': 0
-            },
-            self.player2sym:  {
-                'won': 0, 'lost': 0, 
-                'avg_seconds_per_move': 0, 
-                'num_moves': 0
-            },
-            'num_draws': 0,
-            'num_games': num_games,
-            'seconds': 0
-        }
+        outcome_all_games = {sym: {
+            'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0,
+        } for sym in self.player_symbols.values()}
+        outcome_all_games['num_draws'] = 0
+        outcome_all_games['num_games'] = num_games
+        outcome_all_games['seconds'] = 0
         
         # Print / log status update.
         print(f"\nStarting Play Session: {self.name} {id}")
@@ -467,33 +472,33 @@ class World:
             )
 
             # Player 1's average performance.
-            outcome_all_games[self.player1sym]['won'] += outcome['f_out'][
-                self.player1sym
+            outcome_all_games[self.player1.symbol]['won'] += outcome['f_out'][
+                self.player1.symbol
             ]['won']
-            outcome_all_games[self.player1sym]['lost'] += outcome['f_out'][
-                self.player1sym
+            outcome_all_games[self.player1.symbol]['lost'] += outcome['f_out'][
+                self.player1.symbol
             ]['lost']
-            outcome_all_games[self.player1sym]['num_moves'] += outcome['f_out'][
-                self.player1sym
+            outcome_all_games[self.player1.symbol]['num_moves'] += outcome['f_out'][
+                self.player1.symbol
             ]['num_moves']
-            outcome_all_games[self.player1sym]['avg_seconds_per_move'] = (
-                outcome_all_games[self.player1sym]['avg_seconds_per_move'] + 
-                outcome['f_out'][self.player1sym]['avg_seconds_per_move']
+            outcome_all_games[self.player1.symbol]['avg_seconds_per_move'] = (
+                outcome_all_games[self.player1.symbol]['avg_seconds_per_move'] + 
+                outcome['f_out'][self.player1.symbol]['avg_seconds_per_move']
             ) / 2
 
             # Player 2's average performance.
-            outcome_all_games[self.player2sym]['won'] += outcome['f_out'][
-                self.player2sym
+            outcome_all_games[self.player2.symbol]['won'] += outcome['f_out'][
+                self.player2.symbol
             ]['won']
-            outcome_all_games[self.player2sym]['lost'] += outcome['f_out'][
-                self.player2sym
+            outcome_all_games[self.player2.symbol]['lost'] += outcome['f_out'][
+                self.player2.symbol
             ]['lost']
-            outcome_all_games[self.player2sym]['num_moves'] += outcome['f_out'][
-                self.player2sym
+            outcome_all_games[self.player2.symbol]['num_moves'] += outcome['f_out'][
+                self.player2.symbol
             ]['num_moves']
-            outcome_all_games[self.player2sym]['avg_seconds_per_move'] = (
-                outcome_all_games[self.player2sym]['avg_seconds_per_move'] + 
-                outcome['f_out'][self.player2sym]['avg_seconds_per_move']
+            outcome_all_games[self.player2.symbol]['avg_seconds_per_move'] = (
+                outcome_all_games[self.player2.symbol]['avg_seconds_per_move'] + 
+                outcome['f_out'][self.player2.symbol]['avg_seconds_per_move']
             ) / 2
 
             # Average game time taken.
@@ -504,8 +509,8 @@ class World:
 
         #  Determine no. of draws.
         outcome_all_games['num_draws'] = (num_games - (
-            outcome_all_games[self.player1sym]['won']
-            + outcome_all_games[self.player2sym]['won']
+            outcome_all_games[self.player1.symbol]['won']
+            + outcome_all_games[self.player2.symbol]['won']
         ))
 
         # Print / log session metrics if required.

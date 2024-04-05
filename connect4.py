@@ -5,7 +5,7 @@ import itertools
 from world import World
 import numpy as np
 from player import Player
-from strategy import Strategy
+from strategies import Strategy
 from utility import int2board
 from utility import board2int
 from utility import track_time

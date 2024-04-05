@@ -1,174 +1,31 @@
 ### This file shall define the Tic Tac Toe world.
 
-import os
-import json
-import logging
-import itertools
 import numpy as np
-from player import Player
-from strategy import Strategy
-from utility import track_time
+from world import World
+from utility import int2board
+from utility import board2int
 from utility import print_debug
-from utility import get_datetime_id
-from typing import List, Tuple, Dict
-from utility import tuple_to_list_2d
-from utility import list_to_tuple_2d
-from utility import get_opposite_symbol
+from utility import get_row_col_diags
 
-LOGGER = logging.getLogger("logger_world_ttt")
-class WorldTTT:
+class WorldTTT(World):
     """ 
     This class defines the Tic Tac Toe 
     game world comprising 2 players, a 
     game board and game mechanics.
     """
 
-    def __init__(self):
-        """ Constructor. """
-        self.board = None
-        self.player1 = None
-        self.player2 = None
-        self.next_turn = None
-
-        # self.board = self.__init_board()
-        # self.__sym2players = {'X': None, 'O': None}
-        # self.__players2sym = {}
-        # self.next_turn = 'X' # Player X always goes first.
-        # self.actions = self.__init_actions()
-        # self.states, self.terminal_states_idx = self.__init_states()
-
-    def __init_board(self) -> List[str]:
-        """
-        Initializes an empty game board. Symbol
-        "#" => empty.
-        """
-        self.board = np.full((3, 3), "#")
-
-    def __init_actions(self) -> List[Tuple[int, int, str]]:
-        """ 
-        This function identifies and returns
-        all actions that are possible. Each 
-        action is a tuple with 3 elements
-        being (row position, column position, symbol).
-        @return: A dictionary of actions 
-                 mapped to their index number.
-        """
-        actions = []
-        num_rows = len(self.board)
-        num_columns = len(self.board[0])
-        for r in range(num_rows):
-            for c in range(num_columns):
-                for s in ['X', 'O']:
-                    actions.append((r, c, s))
-        return actions
-
-    def __is_winner(self, state:Tuple, sym:str) -> bool:
-        """ 
-        Check if rows, columns or diagonals contain
-        3 given symbols in a row.
-        @param state: Given state of the game board.
-        @param sym: Symbol to check wins for.
-        @return: True if given player as one and false
-                 otherwise.
-        """
-        # Check if at least one row or columns contains
-        # the winning combination of 3 symbols.
-        for i in range(3):
-            if all(state[i][j] == sym for j in range(3)):
-                return True
-            if all(state[j][i] == sym for j in range(3)):
-                return True
-        # Check if the diagonal contains the
-        # winning combination of 3 symbols.
-        if all(state[i][i] == sym for i in range(3)):
-            return True
-        # Check if the anti diagonal contains the
-        # winning combination of 3 symbols.
-        return all(state[i][2-i] == sym for i in range(3))
-
-    def __is_legal(self, state:Tuple) -> bool:
-        """ 
-        Checks if given state configuration is valid.
-        @param state: State to be checked. Expected
-                    format is [
-                        [<str>, <str>, <str>], 
-                        [<str>, <str>, <str>], 
-                        [<str>, <str>, <str>]
-                    ] where <str> may be '#', 'X' or 'O'.
-        @return: Whether or not this state is valid.
-        Reference: https://algo.monster/liteproblems/794
-        """
-    
-        # Count the number of 'X's and 'O's on the board.
-        count_x = sum(row.count('X') for row in state)
-        count_o = sum(row.count('O') for row in state)
-
-        # Check for the correct number of 'X's and 'O's.
-        if count_x != count_o and count_x-1 != count_o:
-            return False
-
-        # If 'X' has won, 'X's must be one more than 'O's.
-        if self.__is_winner(state, 'X') and count_x-1 != count_o:
-            return False
-
-        # If 'O' has won, the count of 'X's and 'O's must be the same.
-        if self.__is_winner(state, 'O') and count_x != count_o:
-            return False
-        
-        # The board is valid if it does not violate any 
-        # of the above rules.
-        return True
-
-    def __init_states(self) -> Tuple[List, List[int]]:
-        """ 
-        This function identifies and returns
-        all 5478 legal states.
-        @return: A tuple wherein the first element
-                 is a dictionary that maps all states
-                 to its specific index and the second
-                 element is a list of state indices
-                 representing terminal states.
-        """
-        states = []
-        terminal_states_idx = []
-
-        # For every possible combination of '#', 'X' or 'O'
-        # in each of the 9 possible places in the board do ...
-        for state in itertools.product(['X', 'O', '#'], repeat=9):
-            
-            # Reshape the state into a 3x3 matrix.
-            state = tuple([state[i:i+3] for i in range(0, 9, 3)])
-            
-            # Check if this state is legal.
-            if self.__is_legal(state): 
-                # Consider this state if and only
-                # if it is legal.
-                states.append(state)
-                
-                # Add state index to list of terminal 
-                # states if this is a terminal state
-                # (X wins, O wins or draw).
-                if self.is_game_over(state):
-                    terminal_states_idx.append(states.index(state))
-
-        return states, terminal_states_idx
-
-    def __get_set_val(self, s:np.ndarray, sym:str):
+    def __get_set_val(self, s:list):
         """ 
         Given a set of values representing either
         a row, column or diagonal. This function
         returns the value (goodness) of that row.
-        @param s: Set.
+        @param s: Set of values in a column, row
+                  diagonal or anti-diagonal.
         @param sym: Symbol of this player.
         """
-        s_list = []
-        for c in s:
-            if c == sym: s_list.append(1)
-            elif c == '#': s_list.append(-1)
-            else: s_list.append(0)
-        count_me = s_list.count(1) # Spots occupied by "me".
-        count_opp = s_list.count(0) # Spots occupied by my "opponent".
-        count_free = s_list.count(-1) # Free spots.
+        count_me = s.count(1) # Spots occupied by "me".
+        count_opp = s.count(0) # Spots occupied by my "opponent".
+        count_free = s.count(-1) # Free spots.
         count_ideal_free = 3 - count_me
 
         # print_debug(f'{s}, {count_me}, {count_opp}, {count_free}, {count_ideal_free}')
@@ -184,146 +41,266 @@ class WorldTTT:
             (3*(count_opp == 3))
         )
 
-    def __make_move(self, action:Tuple[int, int, str]):
+    def get_actions(self, is_player1:bool) -> list:
         """
-        Changes the board and next turn state
-        as per a move that the player makes.
-        @param action: Action to take.
-        @param sym: Symbol of this player.
+        Returns list of all possible actions.
+        @param is_player1: Whether this is player 1 or 2.
+        @return: List of all possible actions for this player.
+                 Each action is a 2 tuple with the first element
+                 being a tuple indicating position on the board.
+                 The second element is 1 if this is player 1 and
+                 2 if this is player 2.
         """
-        board_content = self.board[action[0]][action[1]]
-        if board_content != "#":
-            raise Exception(
-                "Cannot make that move! Chosen position "
-                + f"{(action[0], action[1])} is not empty."
-            )
-        self.board[action[0]][action[1]] = action[2]
-        self.next_turn = get_opposite_symbol(action[2])
+        player_num = 1 if is_player1 else 2
+        return [
+            ((r, c), player_num)
+            for r in range(self.board.shape[0])
+            for c in range(self.board.shape[1])
+        ]
 
-    def get_world_str(self, pretty=False):
-        """ 
-        Returns the current world state with
-        world board and the player whose turn 
-        it is next as a string.
-        @param pretty: Whether or not the string should include
-                       spaces that make it easy to read 
-                       (false by default).
-        @param return: String of the world as it is now.
+    def is_valid(self, num_board:np.ndarray, is_player1:bool) -> bool:
+        """ Given a board, return if it is a valid
+            state or not.
+            @param num_board: Board containing numbers from this
+                              player's perspective.
+            @param is_player1: If true, then this is the first player.
+                               Else, it is the second player.
+            @param: Returns false if this is an invalid state and
+                    true otherwise.
         """
-        to_return = ''
-        for row in self.board:
-            to_return += " ".join(row)
-            to_return += "\n" if pretty else " | "
-        to_return += f"next turn = {self.next_turn}"
-        return to_return
-    
-    def configure_players(self, x:Player, o:Player):
-        """ 
-        Setter for players.
-        @param x: Player X.
-        @param o: Player O.
-        """
-        self.__sym2players['X'] = x
-        self.__sym2players['O'] = o
-        self.__players2sym[str(x)] = 'X'
-        self.__players2sym[str(o)] = 'O'
+        sym_p1 = 1 if is_player1 else 0
+        sym_p2 = 1 - sym_p1
 
-    def is_game_over(self, state_idx:int) -> bool:
-        """
-        Checks if given state is a terminal state.
-        @param state_idx: Index of state to examine.
-        @return: Returns true if this state is terminal 
-                 and false otherwise.
-        """
-        # This state is terminal if any of the following
-        # conditions are true.
-        # 1. Player X has won.
-        # 2. Player O has won.
-        # 3. The board has no empty positions.
-        state = self.states[state_idx]
-        if (self.__is_winner(state, 'X')):
-            return True
-        elif (self.__is_winner(state, 'O')):
-            return True
-        elif sum(row.count('#') for row in state) == 0:
-            return True
-        return False
+        # Count the number of pieces on the board
+        # that belong to this player and the opponent.
+        # Here, p1 => Player 1 and p2 => Player 2.
+        count_p1 = np.count_nonzero(num_board == sym_p1)
+        count_p2 = np.count_nonzero(num_board == sym_p2)
 
-    def get_next_states(self, state_idx:int, sym:str) -> List[Tuple]:
-        """
-        Given a state and the symbol of the player who is to go
-        next. A list of all possible valid states, is returned.
-        @param state: Current state.
-        @param sym: Symbol of the player who's move it is next.
-        @return: List of all (state, action) pairs
-                 corresponding to all states that are accessible 
-                 from the given one.
-        """
-        state = self.states[state_idx]
-        next_states = []
-        for i in range(len(state)):
-            row = state[i]
-            for j in range(len(row)):
-                cell = row[j]
-                if cell == '#':
-                    new_state = [list(row) for row in state]
-                    new_state[i][j] = sym
-                    new_state = tuple([tuple(row) for row in new_state])
-                    if self.__is_legal(new_state):
-                        next_states.append((new_state, (i, j, sym)))
-        return next_states
-    
-    def get_next_state(self, state_idx:int, action_idx:int) -> Tuple:
-        """
-        Given a state, the symbol of the player who is to go
-        next and the action to  A list of all possible valid states, is returned.
-        @param state_idx: Index of current state.
-        @param action_idx: Index of action to take.
-        @return: A tuple wherein the first element 
-                 is whether this move is possible and 
-                 the second one is the next state
-                 if the move was possible or None otherwise.
-        """
-        # If the spot where this player is 
-        # looking to place their symbol is
-        # not empty, then this move is not
-        # possible.
-        state = self.states[state_idx]
-        action = self.actions[action_idx]
-        if state[action[0]][action[1]] != '#':
-            return False, None
-        next_state = tuple_to_list_2d(state)
-        next_state[action[0]][action[1]] = action[2]
-        # If the resulting next state is not
-        # legal, then this move is not possible.
-        if not self.__is_legal(next_state):
-            return False, None
-        return True, list_to_tuple_2d(next_state)
-    
-    def state_eval(self, state_idx:Tuple, sym:str, is_my_turn_next:bool) -> float:
+        # Check for the correct number of player 1's 
+        # and player 2's pieces.
+        if count_p1 != count_p2 and count_p1-1 != count_p2:
+            return False
+        
+        # Both player 1 and 2 cannot simultaneously win.
+        win_p1 = False
+        win_p2 = False
+
+        # Check row, column and diagonal from
+        # center position.
+        row_col_diags = get_row_col_diags(
+            board = num_board,
+            row_idx = 1, col_idx = 1
+        )
+        for v in row_col_diags.values():
+            v = v.values()
+            v_p1 = [1 if vp == sym_p1 else 0 for vp in v]
+            if sum(v_p1) == 3:
+                win_p1 = True
+            v_p2 = [1 if vp == sym_p2 else 0 for vp in v]
+            if sum(v_p2) == 3:
+                win_p2 = True
+
+        # Check row, column and diagonal from
+        # the top left position.
+        row_col = get_row_col_diags(
+            board = num_board,
+            row_idx = 0, col_idx = 0,
+            directions=['row', 'col']
+        )
+        for v in row_col.values():
+            v = v.values()
+            v_p1 = [1 if vp == sym_p1 else 0 for vp in v]
+            if sum(v_p1) == 3:
+                win_p1 = True
+            v_p2 = [1 if vp == sym_p2 else 0 for vp in v]
+            if sum(v_p2) == 3:
+                win_p2 = True
+
+        # Check row, column and diagonal from
+        # the bottom right position.
+        row_col = get_row_col_diags(
+            board = num_board,
+            row_idx = 2, col_idx = 2,
+            directions=['row', 'col']
+        )
+        for v in row_col.values():
+            v = v.values()
+            v_p1 = [1 if vp == sym_p1 else 0 for vp in v]
+            if sum(v_p1) == 3:
+                win_p1 = True
+            v_p2 = [1 if vp == sym_p2 else 0 for vp in v]
+            if sum(v_p2) == 3:
+                win_p2 = True
+
+        if win_p1 and win_p2:
+            return False
+
+        # If player 1 has won, their pieces must be 
+        # one more in number than that of player 2.
+        if win_p1 and count_p1-1 != count_p2: 
+            return False
+
+        # If player 2 has won, the count of both
+        # players' pieces must be the same.
+        if win_p2 and count_p1 != count_p2: 
+            return False
+        
+        # The board is valid if it does not violate any 
+        # of the above rules.
+        return True
+
+    def is_winner(self, num_board:np.ndarray) -> int:
         """ 
+        Given a board, return if this player has won.
+        @param num_board: Board containing numbers from this
+                        player's perspective.
+        @param: Returns 1 if this player has won, -1 if the
+                the opponent has one and 0 if no one has won.
+        """
+        # Check row, column and diagonal from
+        # center position.
+        row_col_diags = get_row_col_diags(
+            board = num_board,
+            row_idx = 1, col_idx = 1
+        )
+        for v in row_col_diags.values():
+            v = v.values()
+            v_me = [1 if n == 1 else 0 for n in v]
+            if sum(v_me) == 3:
+                return 1
+            v_opp = [1 if n == 0 else 0 for n in v]
+            if sum(v_opp) == 3:
+                return -1
+
+        # Check row, column and diagonal from
+        # the top left position.
+        row_col = get_row_col_diags(
+            board = num_board,
+            row_idx = 0, col_idx = 0,
+            directions=['row', 'col']
+        )
+        for v in row_col.values():
+            v = v.values()
+            v_me = [1 if n == 1 else 0 for n in v]
+            if sum(v_me) == 3:
+                return 1
+            v_opp = [1 if n == 0 else 0 for n in v]
+            if sum(v_opp) == 3:
+                return -1
+
+        # Check row, column and diagonal from
+        # the bottom right position.
+        row_col = get_row_col_diags(
+            board = num_board,
+            row_idx = 2, col_idx = 2,
+            directions=['row', 'col']
+        )
+        for v in row_col.values():
+            v = v.values()
+            v_me = [1 if n == 1 else 0 for n in v]
+            if sum(v_me) == 3:
+                return 1
+            v_opp = [1 if n == 0 else 0 for n in v]
+            if sum(v_opp) == 3:
+                return -1        
+        
+        return 0
+
+    def is_legal(self, num_board:np.ndarray, action:tuple) -> bool:
+        """
+        Returns whether a given action is legal.
+        An action is not legal if it is not
+        possible.
+        @param num_board: Game board from the perspective
+                          of some player.
+        @param action: The action to take in the format =
+                       ((row index, column index), player number)
+        @return: True if action is legal and false otherwise.
+        """
+
+        # Player can only be either 1 or 2.
+        if not action[1] in [1, 2]:
+            return False
+
+        # Position at which to place piece.
+        pos = action[0]
+
+        # Action tries to put piece in a non-existent
+        # column => illegal action.
+        if (
+            pos[0] < 0 or pos[0] >= self.board.shape[0] or
+            pos[1] < 0 or pos[1] >= self.board.shape[1]
+        ): return False
+       
+        # Action tries to input a piece into a 
+        # column that is already full => illegal action.
+        if num_board[pos] != -1:
+            return False
+        
+        # If above conditions are not met,
+        # then the action is deemed legal.
+        return True
+
+    def get_next_state(self, board, action:tuple) -> int:
+        """
+        Given the integer representation of a
+        game board containing numbers
+        as per a given player's perspective,
+        and an action to take, returns an 
+        integer indicative of the resulting
+        next board state. The value -1 is returned
+        if the action is illegal.
+        @param board_int: Current game board from the
+                          perspective of the player who
+                          is going ot execute the given action.
+                          It is assumed that this state is valid.
+        @param action: The action to take.
+        @return: Integer of next board from the perspective
+                 of the player that took the action, or -1.
+        """
+        if type(board) == int:
+            board = int2board(board, self.board.shape)
+
+        # If this action is illegal,
+        # then return -1.
+        if not self.is_legal(board, action):
+            return -1
+        
+        # If the resulting state is invalid,
+        # then return -1.
+        is_player1 = (action[1]==1)
+        next_state = board.copy()
+        next_state[action[0]] = 1
+        if not self.is_valid(next_state, is_player1):
+            return -1
+        
+        return board2int(next_state)
+
+    def state_eval(self, board, is_my_turn_next:bool):
+        """
         Computes the value of given state. 
-        @param state_idx: Index of state to evaluate.
-        @param sym: The symbol of this player.
+        @param board: Game board from perspective of a player.
         @param is_my_turn_next: True if the next turn is this
                                 player's and false otherwise.
         @return: Value of this state.
         """
-        state = np.array(self.states[state_idx]) 
-
+        if type(board) == int:
+            board = int2board(board, self.board.shape)
+    
         # Compute value of each of the following:
         # [row0, row1, row2, diag, col0, col1, col2, anti-diag]  
         vals = [] 
         # Row values.
-        for row in state: 
-            vals.append(self.__get_set_val(row, sym))
+        for row in board: 
+            vals.append(self.__get_set_val(row.tolist()))
         # Diagonal value.
-        vals.append(self.__get_set_val(state.diagonal(), sym))
+        vals.append(self.__get_set_val(board.diagonal().tolist()))
         # Column values.
-        for col in state.T: 
-            vals.append(self.__get_set_val(col, sym))
+        for col in board.T: 
+            vals.append(self.__get_set_val(col.tolist()))
         # Anti diagonal value.
-        vals.append(self.__get_set_val(np.fliplr(state).diagonal(), sym))
+        vals.append(self.__get_set_val(np.fliplr(board).diagonal().tolist()))
 
         # Compute state value.
         if 4 in vals: return 10.0
@@ -339,265 +316,65 @@ class WorldTTT:
             elif 3 in vals:
                 if vals.count(3) == 1: return 0.0
                 else: return  5.0
-            else: return np.mean(vals) 
+            else: return np.mean(vals)
 
-    def get_reward_table(self) -> list:
+    def is_adjacent_playable_free(self,
+        board:np.ndarray,
+        pos_start:tuple, 
+        pos_end:tuple, 
+        direction:str
+    ):
         """
-        Generates and returns a table consisting of 
-        no. of rows = no. of states and no. of columns 
-        = no. of actions. The content of the table = 
-        2D matrix at any position [r, c] = value of
-        the resulting state arrived at upon taking 
-        action c while in state r. If the outcome
-        of taking action is an invalid state, then 
-        the corresponding position shall have a value 
-        -100 to indicate this.
-        @return: The rewards table as a numpy array.
+        Computes if there exists at least one spot
+        adjacent to given min and max position
+        on the board such that it is free and is 
+        playable (is filled at bottom).
+        @param board: Board with numbers as per a player's
+                      perspective.
+        @param pos_start: Point on board before
+                        which an adjacent position
+                        shall be searched for.
+        @param pos_end: Point after which an adjacent position
+                        shall be searched for.
+        @param direction: Direction in which to search.
+        @param return: True if such a point is found and false
+                       otherwise.
         """
-        num_states = len(self.states) # rows
-        num_actions = len(self.actions) # columns
-        
-        # Initialize the rewards table 
-        # to contain all -100s.
-        r_tab = [ 
-            [-100] * num_actions 
-            for _ in range(num_states)
-        ]
+        a_pos_start = (-1, -1)
+        a_pos_end = (-1, -1)
 
-        # Fill reward table.
-        for r in range(num_states):
-            state = self.states[r]
-            for c in range(num_actions):
-                action = self.actions[c]
-                is_possible, next_state = self.get_next_state(state, action)
-                # Add value of next state into the 
-                # corresponding cell of the reward
-                # table if and only if the next state
-                # is a valid one.
-                if is_possible: 
-                    r_tab[r][c] = self.state_eval(
-                        state = next_state,
-                        sym = action[2],
-                        is_my_turn_next = False
-                    )
-        
-        return r_tab
+        if direction == 'row':
+            a_pos_start = (pos_start[0], pos_start[1]-1)
+            a_pos_end = (pos_end[0], pos_end[1]+1)
+        if direction == 'col':
+            a_pos_start = (pos_start[0]-1, pos_start[1])
+            a_pos_end = (pos_end[0]+1, pos_end[1])
+        if direction == 'diag':
+            a_pos_start = (pos_start[0]-1, pos_start[1]-1)
+            a_pos_end = (pos_end[0]+1, pos_end[1]+1)
+        if direction == 'antidiag':
+            a_pos_start = (pos_start[0]-1, pos_start[1]+1)
+            a_pos_end = (pos_end[0]+1, pos_end[1]-1)
 
-    def get_reward(self, state_idx:int, action_idx:int) -> int:
-        """
-        Returns the reward of executing a given action 
-        in given state.
-        @param state: Given state.
-        @param action: Given action.
-        @return reward: The value of resulting state. If
-                        this action at state is illegal
-                        or results in an invalid state, then
-                        -100 is returned.
-        """
-        action = self.actions[action_idx]
-        is_possible, next_state = self.get_next_state(state_idx, action_idx)
-        if not is_possible:
-            return -100
-        if is_possible: 
-            return self.state_eval(
-                state = self.states.index[next_state],
-                sym = action[2],
-                is_my_turn_next = False
-            )
-        
-    @track_time
-    def __play1game(self, idx:int,
-        print_moves:bool, print_metrics:bool,
-        log_moves:bool, log_metrics:bool
-    ) -> dict:
-        """
-        Conduct one game session.
-        @param idx: Game number.
-        @param print_moves: Whether or not moves of this game
-                            are to be printed to the terminal.
-        @param print_metrics: Whether or not game metrics are
-                              to be printed to the terminal.
-        @param log_metrics: Whether or not game moves are
-                            to be logged into a file.
-        @param log_metrics: Whether or not game metrics are
-                            to be logged into a file.
-        @return outcome: Game outcome.
-        """
-        global LOGGER
+        # If the position is free in one direction
+        # in the desired direction, then return true.
+        if (
+            a_pos_start[0] >= 0 and 
+            a_pos_start[0] < board.shape[0] and
+            a_pos_start[1] >= 0 and 
+            a_pos_start[1] < board.shape[1] and
+            board[a_pos_start] == -1
+        ): return True
 
-        if None in self.__sym2players.values():
-            raise Exception('No players. Please configure players.')
-        
-        outcome = {
-            'X':  {'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0},
-            'O':  {'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0}
-        }
+        # If the position is free in the other direction
+        # in the desired direction, then return true.
+        if (
+            a_pos_end[0] >= 0 and 
+            a_pos_end[0] < board.shape[0] and
+            a_pos_end[1] >= 0 and
+            a_pos_end[1] < board.shape[1] and
+            board[a_pos_end] == -1
+        ): return True
 
-        # Reset board and first player.
-        self.board = self.__init_board()
-        self.next_turn = 'X'
-
-        print(f"Playing game {idx}.")
-        LOGGER.info(f"Playing game {idx}.")
-
-        if print_moves: # Print world state if required.
-            print(self.get_world_str(pretty=True))
-        if log_moves: # Log world state if required.
-            LOGGER.info(self.get_world_str(pretty=False))
-
-        # Keep making moves until a terminal
-        # state is reached.
-        is_game_over = self.is_game_over(self.board)
-        while (not is_game_over):
-            p = self.__sym2players[self.next_turn] # Current player.
-            move = p.strategy.get_move(
-                state=list_to_tuple_2d(self.board), 
-                sym=p.symbol
-            )
-            outcome[p.symbol]['avg_seconds_per_move'] = (
-                outcome[p.symbol]['avg_seconds_per_move'] 
-                + move['seconds']
-            ) / 2
-            action_idx = move['f_out']
-            self.__make_move(action=self.actions[action_idx])
-            outcome[p.symbol]['num_moves'] += 1
-
-            if print_moves: # Print move if required.
-                print(self.get_world_str(pretty=True))
-            if log_moves: # Log move if required.
-                LOGGER.info(self.get_world_str(pretty=False))
-
-            # Determine if the game is over.
-            is_game_over = self.is_game_over(self.board)
-
-        # Determine winner if any.
-        if self.__is_winner(self.board, 'X'):
-            outcome['X']['won'] += 1
-        elif self.__is_winner(self.board, 'O'):
-            outcome['O']['won'] += 1
-
-        outcome_str = json.dumps(outcome, indent=4)
-        if print_metrics: # Print game metrics if required.
-            print(f"Game {idx} metics = {outcome_str}")
-        if log_metrics: # Log game metrics if required.
-            LOGGER.info(f"Game {idx} metics = {outcome_str}")
-
-        return outcome
-
-    def play(self, id:str, out_config:dict={}, num_games:int=1):
-        """ 
-        Conducts one or more game sessions.
-        @param id: String that identifies this play session.
-        @param num_games: No. of games to play.
-        @param out_config: The configuration of how results are to be
-                           output (in the terminal or saved into a file).
-                           Expected format = {
-                                "print_moves": bool,
-                                "print_metrics": bool,
-                                "log_folder": str,
-                                "log_moves": bool,
-                                "log_metrics": bool
-                           }
-        @return game_metrics: Data about games that
-                              were played.
-        """
-        global LOGGER
-
-        # Define default output configurations.
-        out_config_default = {
-            'print_moves': False,
-            'print_metrics_game': False,
-            'print_metrics_session': True,
-            'log_folder': f'./__logs',
-            'log_moves': False,
-            'log_metrics_game': False,
-            'log_metrics_session': True
-        }
-        for k in out_config_default.keys():
-            if k in out_config:
-                out_config_default[k] = out_config[k]
-        out_config = out_config_default
-
-        # Prepare to log play outcome.
-        if not os.path.exists(out_config['log_folder']):
-            os.makedirs(out_config['log_folder'])
-        log_filename = f"{id}_ttt_{get_datetime_id()}"
-
-        logging.basicConfig(
-            filename=f'{out_config['log_folder']}/{log_filename}.log', 
-            level=logging.INFO, 
-            format='%(message)s'
-        )
-
-        # Average game outcomes for each game.
-        outcome_all_games = {
-            'X':  {'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0},
-            'O':  {'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0},
-            'num_draws': 0,
-            'num_games': num_games,
-            'seconds': 0
-        }
-        
-        print(f"\nStarting Tic Tac Toe play session '{id}'.")
-        LOGGER.info(f"\nTic Tac Toe play session '{id}'.")
-        
-        # Play specified no. of games.
-        for i in range(num_games):
-
-            # Play one game.
-            outcome = self.__play1game(
-                idx=i+1,
-                print_moves=out_config['print_moves'],
-                print_metrics=out_config['print_metrics_game'],
-                log_moves=out_config['log_moves'],
-                log_metrics=out_config['log_metrics_game'],
-            )
-
-            # X's average performance.
-            outcome_all_games['X']['won'] += outcome['f_out']['X']['won']
-            outcome_all_games['X']['lost'] += outcome['f_out']['X']['lost']
-            outcome_all_games['X']['num_moves'] += outcome['f_out']['X']['num_moves']
-            outcome_all_games['X']['avg_seconds_per_move'] = (
-                outcome_all_games['X']['avg_seconds_per_move'] + 
-                outcome['f_out']['X']['avg_seconds_per_move']
-            ) / 2
-
-            # O's average performance.
-            outcome_all_games['O']['won'] += outcome['f_out']['O']['won']
-            outcome_all_games['O']['lost'] += outcome['f_out']['O']['lost']
-            outcome_all_games['O']['num_moves'] += outcome['f_out']['O']['num_moves']
-            outcome_all_games['O']['avg_seconds_per_move'] = (
-                outcome_all_games['O']['avg_seconds_per_move'] + 
-                outcome['f_out']['O']['avg_seconds_per_move']
-            ) / 2
-
-            # Average game time taken.
-            outcome_all_games['seconds'] = (
-                outcome_all_games['seconds'] +
-                outcome['seconds']
-            ) / 2
-
-        #  Determine no. of draws.
-        outcome_all_games['num_draws'] = (num_games - (
-            outcome_all_games['X']['won']
-            + outcome_all_games['O']['won']
-        ))
-
-        print(f"Play session '{id}' complete.")
-        LOGGER.info(f"Play session '{id}' complete.")
-
-        outcome_str = json.dumps(outcome_all_games, indent=4)
-        # Print session metrics if required.
-        if out_config['print_metrics_session']:
-            print(f"Session metics = {outcome_str}.")
-        # Log session metrics if required.
-        if out_config['log_metrics_session']:
-            LOGGER.info(f"Session metics = {outcome_str}.")
-
-        # Unlink logger.
-        for handle in LOGGER.handlers[:]:
-            if isinstance(handle, logging.FileHandler): 
-                handle.close()
-                LOGGER.removeHandler(handle)
-
-        logging.shutdown(LOGGER.handlers)
+        # Else return false.
+        return False 

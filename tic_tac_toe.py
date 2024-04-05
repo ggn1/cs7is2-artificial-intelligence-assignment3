@@ -1,5 +1,6 @@
 ### This file shall define the Tic Tac Toe world.
 
+import random
 import numpy as np
 from world import World
 from utility import int2board
@@ -318,63 +319,28 @@ class WorldTTT(World):
                 else: return  5.0
             else: return np.mean(vals)
 
-    def is_adjacent_playable_free(self,
-        board:np.ndarray,
-        pos_start:tuple, 
-        pos_end:tuple, 
-        direction:str
-    ):
+    def get_start_states(self, is_player1:bool) -> list:
         """
-        Computes if there exists at least one spot
-        adjacent to given min and max position
-        on the board such that it is free and is 
-        playable (is filled at bottom).
-        @param board: Board with numbers as per a player's
-                      perspective.
-        @param pos_start: Point on board before
-                        which an adjacent position
-                        shall be searched for.
-        @param pos_end: Point after which an adjacent position
-                        shall be searched for.
-        @param direction: Direction in which to search.
-        @param return: True if such a point is found and false
-                       otherwise.
+        Returns a list of integers corresponding to 
+        random start states for the given player. For player
+        1 this is always just the empty board. For player 2,
+        it is any valid position wherein there is only one
+        of the opponent's pieces on the board.
+        @param is_player1: The player for which the start
+                           states have to be fetched.
+        @param return: List of start states from the perspective
+                       of given player.
         """
-        a_pos_start = (-1, -1)
-        a_pos_end = (-1, -1)
-
-        if direction == 'row':
-            a_pos_start = (pos_start[0], pos_start[1]-1)
-            a_pos_end = (pos_end[0], pos_end[1]+1)
-        if direction == 'col':
-            a_pos_start = (pos_start[0]-1, pos_start[1])
-            a_pos_end = (pos_end[0]+1, pos_end[1])
-        if direction == 'diag':
-            a_pos_start = (pos_start[0]-1, pos_start[1]-1)
-            a_pos_end = (pos_end[0]+1, pos_end[1]+1)
-        if direction == 'antidiag':
-            a_pos_start = (pos_start[0]-1, pos_start[1]+1)
-            a_pos_end = (pos_end[0]+1, pos_end[1]-1)
-
-        # If the position is free in one direction
-        # in the desired direction, then return true.
-        if (
-            a_pos_start[0] >= 0 and 
-            a_pos_start[0] < board.shape[0] and
-            a_pos_start[1] >= 0 and 
-            a_pos_start[1] < board.shape[1] and
-            board[a_pos_start] == -1
-        ): return True
-
-        # If the position is free in the other direction
-        # in the desired direction, then return true.
-        if (
-            a_pos_end[0] >= 0 and 
-            a_pos_end[0] < board.shape[0] and
-            a_pos_end[1] >= 0 and
-            a_pos_end[1] < board.shape[1] and
-            board[a_pos_end] == -1
-        ): return True
-
-        # Else return false.
-        return False 
+        # For player 1
+        if is_player1:
+            return [board2int(np.full(self.board.shape, -1))] # Empty board.
+        
+        # For player 2
+        else:
+            start_states = []
+            for row_idx in range(self.board.shape[0]):
+                for col_idx in range(self.board.shape[1]):
+                    board = np.full(self.board.shape, -1)
+                    board[row_idx, col_idx] = 0
+                    start_states.append(board2int(board))
+            return start_states

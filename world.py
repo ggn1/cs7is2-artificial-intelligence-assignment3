@@ -134,27 +134,16 @@ class World:
         """
         raise Exception("Not implemented!")
 
-    def is_adjacent_playable_free(self,
-        board:np.ndarray,
-        pos_start:tuple, 
-        pos_end:tuple, 
-        direction:str
-    ):
+    def get_random_start_states(self, is_player1:bool) -> list:
         """
-        Computes if there exists at least one spot
-        adjacent to given min and max position
-        on the board such that it is free and is 
-        playable (is filled at bottom).
-        @param board: Board with numbers as per a player's
-                      perspective.
-        @param pos_start: Point on board before
-                        which an adjacent position
-                        shall be searched for.
-        @param pos_end: Point after which an adjacent position
-                        shall be searched for.
-        @param direction: Direction in which to search.
-        @param return: True if such a point is found and false
-                       otherwise.
+        Returns a list of integers corresponding to 
+        random start states for the given player. For player
+        1 this is always just the empty board. For player 2,
+        it is any valid position wherein there is only one
+        of the opponent's pieces on the board.
+        @param is_player1: The player for which the start
+                           states have to be fetched.
+        @param return: List of start states.
         """
         raise Exception("Not implemented!")
 
@@ -234,7 +223,7 @@ class World:
         
         return True
 
-    def get_reward(self, board, action:int) -> int:
+    def get_reward(self, board, action:tuple) -> int:
         """
         Returns the reward of executing a given action 
         in given state.
@@ -242,9 +231,8 @@ class World:
                       of a player.
         @param action: That player's action to take.
         @return reward: The value of resulting state. If
-                        this action at state is illegal
-                        or results in an invalid state, then
-                        -150 is returned.
+                        this action is illegal or results in
+                        an invalid state, then -150 is returned.
         """
         if type(board) == int:
             board = int2board(board, self.board.shape)
@@ -286,27 +274,17 @@ class World:
         #                         this player's.
         @return: List of 2 tuples where the first 
                  element is the integer representation of 
-                 a valid state that player one can reach
-                 by executing legal actions in player 1's
+                 a valid state that this player can reach
+                 by executing legal actions in their own
                  perspective and the second element is the 
                  action that was taken to go to that state.
         """
         if type(board) == int:
             board = int2board(board, self.board.shape)
         next_state_int_action_list = []
-        # move_player = -1
-        # if is_player1: move_player = 1 if is_my_turn_next else 2
-        # else: move_player = 2 if is_my_turn_next else 1
-        # for action in self.get_actions(is_player1=(move_player==1)):
         for action in self.get_actions(is_player1):
-            # if not is_my_turn_next:
-            #     board = switch_player_perspective(board)
             next_state_int = self.get_next_state(board, action)
             if next_state_int != -1:
-                # if not is_my_turn_next:
-                #     next_state = int2board(next_state_int, self.board.shape)
-                #     next_state = switch_player_perspective(next_state)
-                #     next_state_int = board2int(next_state)
                 next_state_int_action_list.append((next_state_int, action))
         return next_state_int_action_list
 

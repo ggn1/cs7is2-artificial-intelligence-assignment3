@@ -169,6 +169,20 @@ def switch_player_perspective(board_num:np.ndarray) -> np.ndarray:
     board_opp[board_opp == 2] = 0
     return board_opp
 
+def switch_player_perspective_int(board_int:int, board_size:tuple) -> int:
+    """ 
+    Switches the board integer from the perspective 
+    of one player to that of the opponent's.
+    @param board_int: Game board as integer.
+    @param board_size: Size of encoded board.
+    @return: Switched board as an integer.
+    """
+    board = int2board(board_int, board_size)
+    board[board == 1] = 2
+    board[board == 0] = 1
+    board[board == 2] = 0
+    return board2int(board)
+
 def get_random_num_board(board_size:tuple) -> np.ndarray:
     """ 
     Returns a random board (need not be valid) 

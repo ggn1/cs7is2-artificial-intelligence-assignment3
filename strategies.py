@@ -1,12 +1,18 @@
 ### This file defines the default game strategy.
+
+import os
+import json
+import random
 import numpy as np
-from typing import Tuple, List, Callable
+from typing import Callable
 from utility import int2board
+from utility import board2int
 from utility import track_time
 from utility import print_debug
 from utility import get_random_free_pos
 from utility import get_opposite_symbol
 from utility import switch_player_perspective
+from utility import switch_player_perspective_int
 
 class Strategy:
     """ 
@@ -483,3 +489,350 @@ class StrategyMiniMax(Strategy):
         # The first action in  the list of returned best
         # search path is the best action to take.
         return out['actions'][0][0]
+    
+class StrategyTabQLearning(Strategy):
+    """ 
+    An agent that learns to play the given game 
+    via reinforcement learning, specifically 
+    tabular Q learning.
+    The Q table here, is a dictionary 
+    containing states which are tuples of the
+    form: (state integer, player number) mapped to
+    a dictionary which in turn maps possible
+    actions from that state to q values. Actions
+    are in the form (actions position, player).
+    All states are maintained in the Q table equivalent
+    dictionary in player 1's perspective.
+    """
+
+    def __init__(self, 
+        get_reward:Callable,
+        is_game_over:Callable,
+        get_next_states:Callable,
+        get_next_state:Callable,
+        get_actions:Callable,
+        get_start_states:Callable,
+        board_shape:tuple,
+        name:str=None
+    ):
+        """
+        Constructor.
+        @param name: Name of the strategy.
+        @param is_game_over: A function that returns true if a
+                             given state is terminal or false
+                             otherwise.
+        @param get_next_states: A function that returns next states
+                                reachable from any given state.
+        @param get_next_state: A function that returns state arrived
+                               at when given action a is executed from
+                               given state s.
+        @param get_start_states: Function that returns all valid
+                                 first states for a given player.
+        @param board_shape: Shape of the board.
+        @param actions: List of all possible actions.
+        """
+        super().__init__(name=name)
+        self.is_game_over = is_game_over
+        self.get_next_states = get_next_states
+        self.get_next_state = get_next_state
+        self.actions = {
+            1: get_actions(is_player1=True), # player 1
+            2: get_actions(is_player1=False) # player 2
+        }
+        self.q_tab = {1:{}, 2:{}}
+        self.board_shape = board_shape
+        self.q_val_unknown = 0 # Unknown state action pairs have this value.
+        # self.is_player1 = is_player1
+        self.unexplored_start_states = {
+            1: get_start_states(is_player1=True), # player 1
+            2: get_start_states(is_player1=False) # player 2
+        }
+        self.get_reward = get_reward
+
+    def __is_stopping_condition_met(self, stop_data:dict) -> bool: 
+        """
+        Checks if a stopping condition has been met.
+        @param stop_data: Dictionary with 
+                          values related to variables
+                          associated with a stopping condition.
+        @return: True if the stopping condition has
+                 been met and false otherwise.
+        """
+        # 1. Stop once the model has trained for some 
+        # specified no. of episodes.
+        if 'num_episodes_remaining' in stop_data:
+            stop_data['num_episodes_remaining'] == 0 
+            print(f"Max episodes reached.")
+            return True
+        return False
+
+    def get_random_state(self, player_num:int) -> int:
+        """
+        Returns a random state from known
+        ones. Returns one of unexplored start states
+        until all these states are known, then,
+        randomly fetches from known states.
+        @param player_num: 1 if this is player 1 and 
+                           2 otherwise.
+        @return: A valid state for this player.
+        """
+        start_state = None
+        if len(self.unexplored_start_states[player_num]) > 0:
+            start_state = self.unexplored_start_states[player_num].pop()
+        else:
+            start_state = random.sample(self.q_tab[player_num].keys(), 1)[0]
+        # States are always maintained in the 
+        # first player's perspective.
+        # If this is player 1, then no change.
+        # But if this is player 2, then 
+        # perspective must be switched to that of player 1.
+        if player_num == 2:
+            start_state = switch_player_perspective_int(start_state, self.board_shape)
+        return start_state 
+
+    def get_random_new_action(self, 
+        board_int:int, 
+        board:np.ndarray, 
+        player_num:int
+    ) -> tuple:
+        """
+        Returns a random valid action for this player 
+        from the given state.
+        @param board: Game board from player 1's perspective.
+        @param board_int: Same board as integer.
+        @return: A random, valid action or 
+                 -1 if no such action was found.
+        """
+        actions = self.actions[player_num].copy()
+        while len(actions) > 0:
+            action = random.choice(actions)
+            if ( # Proceed only if this is not a known action.
+                board_int not in self.q_tab[player_num] or 
+                action not in self.q_tab[player_num][board_int]
+            ):
+                next_state_int = -1
+                if player_num == 1:
+                    next_state_int = self.get_next_state(board, action)
+                else: # player_num == 2
+                    next_state_int = self.get_next_state(
+                        switch_player_perspective(board)
+                    , action)
+                if next_state_int != -1:
+                    return action
+            actions.remove(action)
+        return -1
+
+    def learn(self,
+        max_episodes:int,
+        discount_factor:float, # gamma
+        learning_rate:float, # alpha
+        is_player1:bool
+    ):
+        """ 
+        Perform Q learning to determine best 
+        Q table values that maximize rewards
+        for this player.
+        @param discount_factor: Factor by which rewards get 
+                                discounted over time.
+        @param learning_rate: Learning rate.
+        @param max_episodes: Maximum no. of episodes. Is -1 by 
+                             default which indicates that the
+                             algorithm may continue until convergence.
+        @param is_player1: Whether the player with which this
+                           learning session begins is player 1.
+        """
+        player_num = 1 if is_player1 else 2
+        print(f'Learning (Starting Player  = {player_num}) ...')
+        stop_data = {'num_episodes_remaining': max_episodes}
+        num_episodes = 0 # Episode counter.
+        try:
+            # 1. Loop for each episode until
+            #    the algorithm has converged or a 
+            #    stopping condition is met.
+            while not self.__is_stopping_condition_met(stop_data):
+                # Update episode count.
+                num_episodes += 1
+                stop_data['num_episodes_remaining'] -= 1
+
+                # 2. Pick a random start state.
+                s = self.get_random_state(player_num)
+
+                # 3. Do while a terminal state has not yet been reached.
+                num_states_visited = 0 # No. of states visited.
+                while not self.is_game_over(s):
+                    
+                    # 4. From the list of possible actions from this 
+                    #    state s, pick a random one.
+                    possible_state_actions = []
+                    if player_num == 1:
+                        possible_state_actions = self.get_next_states(
+                            board = s, 
+                            is_player1 = True
+                        )
+                    else: # player_num == 2
+                        possible_state_actions = self.get_next_states(
+                            board = switch_player_perspective_int(s, self.board_shape), 
+                            is_player1 = False
+                        )
+                    state_action = random.choice(possible_state_actions)
+                    a = state_action[1] # action (action position, current player number)
+                    
+                    # 5. Get next state arrived at
+                    #    by executing randomly selected
+                    #    action a from state s.
+                    if a[1] == 1: # player_num == 1
+                        sn = state_action[0]
+                    else: # player_num == 2
+                        sn = switch_player_perspective_int(state_action[0], self.board_shape)
+                    
+                    # 6. Get highest Q value among that of all
+                    #    (next state, possible next action) pairs.
+                    next_player_num = player_num % 2 + 1 # a[1] % 2 + 1
+                    if not sn in self.q_tab[next_player_num]:
+                        max_q_sn_an = self.q_val_unknown
+                    else:   
+                        an_dict = self.q_tab[next_player_num][sn]
+                        max_q_sn_an = float('-inf')
+                        for an, q_sn_an in an_dict.items():
+                            if q_sn_an > max_q_sn_an: 
+                                max_q_sn_an = q_sn_an
+                        if max_q_sn_an == float('-inf'):
+                            max_q_sn_an = self.q_val_unknown
+
+                    # 7. Compute the following formula and update Q value:
+                    #    Q(s, a) <-- (1 - alpha) Q(s, a) + alpha [
+                    #       R(s, a) + { gamma x max_an[ Q(sn, an) ] }
+                    #    ]
+                    if not s in self.q_tab[player_num]:
+                        q_s_a = self.q_val_unknown
+                    else:
+                        q_s_a = self.q_tab[player_num][s][a]
+                    if player_num == 1:
+                        r_s_a = self.get_reward(s, a)
+                    else: # player_num == 1
+                        r_s_a = self.get_reward(
+                            switch_player_perspective(
+                                int2board(s, self.board_shape)
+                            ), a
+                        )
+                    if not s in self.q_tab[player_num]:
+                        self.q_tab[player_num][s] = {}
+                    self.q_tab[player_num][s][a] = (
+                        ((1 - learning_rate) * q_s_a) + 
+                        (learning_rate * (r_s_a + (discount_factor * max_q_sn_an)))
+                    )
+
+                    # 8. Set the next state to be the new current state.
+                    #    And switch players.
+                    s = sn
+                    player_num = next_player_num
+                    
+                    # Update performance metric.
+                    num_states_visited += 1
+                    max_states_visited = max(
+                        num_states_visited, 
+                        max_states_visited
+                    )
+
+            print(f'All done. Episodes = {num_episodes}.')
+        except KeyboardInterrupt:
+            return ('Keyboard Interrupt', max_states_visited)
+
+    def load_qtab(self, src:str):
+        """ 
+        Load a previously learned Q table
+        stored as a json file.
+        """
+        if not ".json" in src:
+            raise Exception(f"File src must be a .json file.")
+        
+        with open(src, 'r') as f:
+            self.q_tab = np.array(json.load(f))
+        
+        print(f"Loaded Q table from {src}.")
+
+    def save_qtab(self, name:str, folder:str='.'):
+        """ 
+        Function saves the Q table so that
+        training need not be done every time
+        from scratch.
+        @param folder: Folder at which to save file.
+        @param name: Name of file.
+        """
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        
+        dst = f"{folder}/{name}.json"
+        with open(dst, 'w') as f:
+            json.dump(self.q_tab.tolist(), f)
+
+        print(f"Saved Q table at {dst}.")
+
+    @track_time
+    def get_move(self, board:np.ndarray, is_player1:bool, *args, **kwargs) -> tuple:
+        """ 
+        Give a board position returns a
+        position on the board where the player
+        can place its next piece.
+        @param board: Game board from the perspective
+                      of the player who is to make the
+                      move.
+        @param is_player1: True if this is player 1 and 
+                           false otherwise.
+        @return: Action position.
+        """
+        board_int = board2int(board) # Integer of the board.
+        player_num = 1 if is_player1 else 2
+
+        if player_num == 2:
+            board_int = switch_player_perspective_int(board_int, board.shape)
+            board = int2board(board_int, board.shape)
+        
+        # If the agent has no knowledge about this
+        # particular board in the q table, then 
+        # return a random valid new action.
+        if board_int not in self.q_tab[player_num]:
+            random_new_action = self.get_random_new_action(
+                board_int, board, player_num
+            )
+            if random_new_action == -1:
+                raise Exception(
+                    "No legal actions for player "
+                    + f"{player_num} on board\n{board}"
+                )
+            else:
+                return random_new_action[0]
+
+        # Get known actions that this player can take.
+        known_actions = self.q_tab[player_num][board_int] # {action: q value, ...}
+
+        # Find known action with highest q value.
+        qval_max = float('-inf')
+        argmax_action = -1
+        for action, qval in known_actions.items():
+            if qval > qval_max: 
+                qval_max = qval
+                argmax_action = action
+
+        # If max_qval is negative and there are
+        # unknown q values, then, it maybe a good
+        # idea to return another random valid action, 
+        # in case, that leads to a better state.
+        if (
+            qval_max < 0 and
+            len(known_actions) < len(self.actions[player_num])
+        ): 
+            random_new_action = self.get_random_new_action(
+                board_int, board, player_num
+            )
+            if random_new_action == -1:
+                if argmax_action == -1:
+                    raise Exception(
+                        "No legal actions for player "
+                        + f"{player_num} on board\n{board}"
+                    )
+                else:
+                    return argmax_action[0]
+            return random_new_action[0]
+        
+        return argmax_action[0]

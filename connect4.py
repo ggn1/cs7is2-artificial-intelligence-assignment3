@@ -1,23 +1,10 @@
-import os
-import json
 import logging
-import itertools
 from world import World
 import numpy as np
-from player import Player
-from strategies import Strategy
 from utility import int2board
 from utility import board2int
-from utility import track_time
-from utility import print_debug
-from utility import get_datetime_id
-from typing import List, Tuple, Dict
-from utility import tuple_to_list_2d
-from utility import list_to_tuple_2d
 from utility import get_row_col_diags
-from utility import get_opposite_symbol
-from utility import get_world_perspective
-from utility import get_player_perspective
+from output_handler import OutputHandler
 
 LOGGER = logging.getLogger("logger_world_con4")
 
@@ -27,6 +14,21 @@ class WorldCon4(World):
     game world comprising 2 players, a 
     game board and game mechanics.
     """
+
+    def __init__(self,
+        board_size:tuple, 
+        player1sym:str, 
+        player2sym:str, 
+        output_handler:OutputHandler
+    ):
+        """ Constructor. """
+        super().__init__(
+            type="con4",
+            board_size=board_size, 
+            player1sym=player1sym, 
+            player2sym=player2sym,
+            output_handler=output_handler,
+        )
 
     def can_connect4(self, board:np.ndarray):
         """ For both given player and opponent on 

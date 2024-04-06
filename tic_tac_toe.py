@@ -7,6 +7,7 @@ from utility import int2board
 from utility import board2int
 from utility import print_debug
 from utility import get_row_col_diags
+from output_handler import OutputHandler
 
 class WorldTTT(World):
     """ 
@@ -14,6 +15,21 @@ class WorldTTT(World):
     game world comprising 2 players, a 
     game board and game mechanics.
     """
+
+    def __init__(self,
+        board_size:tuple, 
+        player1sym:str, 
+        player2sym:str, 
+        output_handler:OutputHandler
+    ):
+        """ Constructor. """
+        super().__init__(
+            type="ttt",
+            board_size=board_size, 
+            player1sym=player1sym, 
+            player2sym=player2sym,
+            output_handler=output_handler,
+        )
 
     def __get_set_val(self, s:list):
         """ 

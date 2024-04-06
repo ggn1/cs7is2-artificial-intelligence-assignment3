@@ -1,6 +1,3 @@
-import os
-import json
-import logging
 import numpy as np
 from player import Player
 from utility import int2board
@@ -8,8 +5,8 @@ from utility import board2int
 from utility import track_time
 from utility import print_debug
 from utility import get_datetime_id
+from output_handler import OutputHandler
 from utility import get_world_perspective
-from utility import get_player_perspective
 from utility import switch_player_perspective
 
 class World:
@@ -20,17 +17,21 @@ class World:
     """
     
     def __init__(self, 
-        name:str, board_size:tuple,
-        player1sym:str, player2sym:str
+        type:str,
+        board_size:tuple,
+        player1sym:str, 
+        player2sym:str,
+        output_handler:OutputHandler
     ):
         """ 
         Constructor. 
-        @param: A name for this game world.
+        @param type: Type of the world (ttt / con4).
         @param player1sym: Symbol of the first player.
         @param player2sym: Symbol of the second player.
         @param board_size: Size of game board.
+        @param output_handler: To manage output generation.
         """
-        self.name = name
+        self.type = type
         self.board = None # Board is always from the next player's perspective.
         self.player_symbols = {1:player1sym, 2:player2sym}
         self.last_turn = 2
@@ -38,7 +39,7 @@ class World:
         self.player1 = None
         self.player2 = None
         self.__board_size = board_size
-        self.logger = logging.getLogger(f"logger_{name}")
+        self.output_handler = output_handler
         self.reset_game()
 
     def __switch_players(self):
@@ -311,22 +312,34 @@ class World:
 
     @track_time
     def play1game(self, 
-        idx:int, id:str,
-        print_moves:bool, print_metrics:bool,
-        log_moves:bool, log_metrics:bool
+        game_num:int, 
+        session_id:str, 
+        out_config:dict,
+        session_timestamp:str
     ) -> dict:
         """
         Conduct one game session.
-        @param idx: Game number.
-        @param id: String that identifies this play session.
-        @param print_moves: Whether or not moves of this game
-                            are to be printed to the terminal.
-        @param print_metrics: Whether or not game metrics are
-                              to be printed to the terminal.
-        @param log_metrics: Whether or not game moves are
-                            to be logged into a file.
-        @param log_metrics: Whether or not game metrics are
-                            to be logged into a file.
+        @param game_num: Game number.
+        @param session_id: String that identifies this play session.
+        @param out_config: The configuration of how results are to be
+                           output (in the terminal or saved into a file).
+                           Expected format: { # Note! * => optional
+                                'print'*: {
+                                    'moves': <bool>,
+                                    'status': <bool>,
+                                    'metrics': ["game"*, "session"*]
+                                },
+                                'log'*: {
+                                    'moves': <bool>,
+                                    'status': <bool>,
+                                    'metrics': ["game"*, "session"*]
+                                },
+                                'csv'*: {
+                                    "filename": <str>,
+                                }
+                           }
+        @param session_timestamp: Unique time stamp ID of the 
+                                  play session.
         @return outcome: Game outcome.
         """
         if self.player1 is None or self.player2 is None:
@@ -339,15 +352,27 @@ class World:
         # Reset game.
         self.reset_game()
 
-        # Print / log status update.
-        print(f"\nPlaying Game: {self.name} {id} {idx}")
-        self.logger.info(f"\nPlaying Game: {self.name} {id} {idx}")
+        # Print / log status update if required.
+        if "print" in out_config and out_config['print']['status']:
+            self.output_handler.print_start_status(
+                world_type=self.type, session_id=session_id,
+                game_num=game_num
+            )
+        if "log" in out_config and out_config['log']['status']:
+            self.output_handler.log_start_status(
+                world_type=self.type, session_id=session_id, 
+                game_num=game_num, session_timestamp=session_timestamp
+            )
 
         # Print / log world state if required.
-        if print_moves: 
-            print("\n" + self.__str__())
-        if log_moves:
-            self.logger.info("\n" + self.__str__())
+        if "print" in out_config and out_config['print']['moves']:
+            self.output_handler.print_out(self.__str__())
+        if "log" in out_config and out_config['log']['moves']:
+            self.output_handler.log_world_state(
+                world_type=self.type, session_id=session_id,
+                session_timestamp=session_timestamp, 
+                world_str=self.__str__()
+            )
 
         # Keep making moves until a terminal
         # state is reached.
@@ -364,11 +389,15 @@ class World:
                 print(f"Move {move_action[0]} could not be executed.")
             outcome[self.player_symbols[self.last_turn]]['num_moves'] += 1
 
-            # Print / Log moves if needed.
-            if print_moves:
-                print(self.__str__())
-            if log_moves:
-                self.logger.info(self.__str__())
+            # Print / log world state if required.
+            if "print" in out_config and out_config['print']['moves']:
+                self.output_handler.print_out(self.__str__())
+            if "log" in out_config and out_config['log']['moves']:
+                self.output_handler.log_world_state(
+                    world_type=self.type, session_id=session_id,
+                    session_timestamp=session_timestamp, 
+                    world_str=self.__str__()
+                )
 
         # Determine winner if any.
         if self.is_winner(self.board) == 1:
@@ -376,12 +405,55 @@ class World:
         elif self.is_winner(self.board) == -1:
             outcome[self.player_symbols[self.last_turn]]['won'] += 1
 
+        # Record metrics in CSV format if needed.
+            winner = 0
+            if outcome[self.player_symbols[1]]['won'] > 0:
+                winner = 1
+            elif outcome[self.player_symbols[2]]['won'] > 0:
+                winner = 2
+            if "csv" in out_config:
+                self.output_handler.append_to_csv(
+                    world_type=self.type,
+                    player1=self.player_symbols[1],
+                    player2=self.player_symbols[2],
+                    outcome=winner,
+                    avg_seconds_per_move_player1=outcome[
+                        self.player_symbols[1]
+                    ]['avg_seconds_per_move'],
+                    avg_seconds_per_move_player2=outcome[
+                        self.player_symbols[2]
+                    ]['avg_seconds_per_move'],
+                    num_moves=outcome[
+                        self.player_symbols[1]
+                    ]['num_moves'] + outcome[
+                        self.player_symbols[2]
+                    ]['num_moves'],
+                    filename=(
+                        out_config['csv']['filename']
+                        if 'filename' in out_config['csv']
+                        else None
+                    ),
+                    session_id=session_id,
+                    session_timestamp=session_timestamp,
+                    game_num=game_num
+                )
+
         # Print / log game outcome if needed.
-        outcome_str = json.dumps(outcome, indent=4)
-        if print_metrics:
-            print(f"Game {self.name} {id} {idx} Metics: {outcome_str}")
-        if log_metrics:
-            self.logger.info(f"Game {self.name} {id} {idx} Metics: {outcome_str}")
+        if (
+            "print" in out_config and 
+            "game" in out_config['print']['metrics']
+        ): self.output_handler.print_metrics(
+            world_type=self.type, session_id=session_id,
+            metrics=outcome, game_num=game_num
+        )
+        if (
+            "log" in out_config and 
+            "game" in out_config['log']['metrics']
+        ): self.output_handler.log_metrics(
+            world_type=self.type, session_id=session_id,
+            session_timestamp=session_timestamp,
+            metrics=outcome, game_num=game_num
+        )
 
         return outcome
 
@@ -392,43 +464,28 @@ class World:
         @param num_games: No. of games to play.
         @param out_config: The configuration of how results are to be
                            output (in the terminal or saved into a file).
-                           Expected format = {
-                                "print_moves": bool,
-                                "print_metrics": bool,
-                                "log_folder": str,
-                                "log_moves": bool,
-                                "log_metrics": bool
+                           Expected format: { # Note! * => optional
+                                'print'*: {
+                                    'moves': <bool>,
+                                    'status': <bool>,
+                                    'metrics': ["game"*, "session"*]
+                                },
+                                'log'*: {
+                                    'moves': <bool>,
+                                    'status': <bool>,
+                                    'metrics': ["game"*, "session"*]
+                                },
+                                'csv'*: {
+                                    "filename": <str>,
+                                }
                            }
         @return game_metrics: Data about games that
                               were played.
         """
-        # Define default output configurations.
-        out_config_default = {
-            'print_moves': False,
-            'print_metrics_game': False,
-            'print_metrics_session': True,
-            'log_folder': f'./__logs',
-            'log_moves': False,
-            'log_metrics_game': False,
-            'log_metrics_session': True
-        }
-        for k in out_config_default.keys():
-            if k in out_config:
-                out_config_default[k] = out_config[k]
-        out_config = out_config_default
+        # Time stamp that identifies this run.
+        session_timestamp = get_datetime_id()
 
-        # Prepare to log play outcomes.
-        if not os.path.exists(out_config['log_folder']):
-            os.makedirs(out_config['log_folder'])
-        log_filename = f"{self.name}_{id}_{get_datetime_id()}"
-
-        logging.basicConfig(
-            filename=f'{out_config['log_folder']}/{log_filename}.log', 
-            level=logging.INFO, 
-            format='%(message)s'
-        )
-
-        # Average game outcomes for each game.
+        # Initialize average game outcomes for each game.
         outcome_all_games = {sym: {
             'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0,
         } for sym in self.player_symbols.values()}
@@ -436,20 +493,26 @@ class World:
         outcome_all_games['num_games'] = num_games
         outcome_all_games['seconds'] = 0
         
-        # Print / log status update.
-        print(f"\nStarting Play Session: {self.name} {id}")
-        self.logger.info(f"\nPlay Session: {self.name} {id}")
-        
+        # Print / log status update if required.
+        if "print" in out_config and out_config['print']['status']:
+            self.output_handler.print_start_status(
+                world_type=self.type, session_id=id
+            )
+        if "log" in out_config and out_config['log']['status']:
+            self.output_handler.log_start_status(
+                world_type=self.type, session_id=id,
+                session_timestamp=session_timestamp
+            )
+
         # Play specified no. of games.
         for i in range(num_games):
 
             # Play one game.
             outcome = self.play1game(
-                idx=i+1, id=id,
-                print_moves=out_config['print_moves'],
-                print_metrics=out_config['print_metrics_game'],
-                log_moves=out_config['log_moves'],
-                log_metrics=out_config['log_metrics_game'],
+                game_num=i+1,
+                session_id=id, 
+                out_config=out_config,
+                session_timestamp=session_timestamp
             )
 
             # Player 1's average performance.
@@ -495,16 +558,18 @@ class World:
         ))
 
         # Print / log session metrics if required.
-        outcome_str = json.dumps(outcome_all_games, indent=4)
-        if out_config['print_metrics_session']:
-            print(f"Session Metics {self.name} {id}: {outcome_str}.")
-        if out_config['log_metrics_session']:
-            self.logger.info(f"Session Metics {self.name} {id}: {outcome_str}.")
-
-        # Unlink logger.
-        for handle in self.logger.handlers[:]:
-            if isinstance(handle, logging.FileHandler): 
-                handle.close()
-                self.logger.removeHandler(handle)
-
-        logging.shutdown(self.logger.handlers)
+        if (
+            "print" in out_config and 
+            "session" in out_config['print']['metrics']
+        ): self.output_handler.print_metrics(
+            world_type=self.type, session_id=id,
+            metrics=outcome_all_games
+        )
+        if (
+            "log" in out_config and 
+            "session" in out_config['log']['metrics']
+        ): self.output_handler.log_metrics(
+            world_type=self.type, session_id=id,
+            session_timestamp=session_timestamp,
+            metrics=outcome_all_games
+        )

@@ -189,10 +189,9 @@ class World:
         """
         if type(board) == int:
             board = int2board(board, self.board.shape)
-
         # Check if either this player or the opponent has won.
         to_return = self.is_winner(board)
-        if to_return == 1: return
+        if to_return == 1: return 1
         if to_return == -1: return 2
         # If no one has one and there are no more
         # free spaces in the board, then its a draw.

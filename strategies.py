@@ -541,8 +541,7 @@ class StrategyTabQLearning(Strategy):
         }
         self.q_tab = {1:{}, 2:{}}
         self.board_shape = board_shape
-        self.q_val_unknown = 0 # Unknown state action pairs have this value.
-        # self.is_player1 = is_player1
+        self.q_val_unknown = -150 # Unknown state action pairs have this value.
         self.unexplored_start_states = {
             1: get_start_states(is_player1=True), # player 1
             2: get_start_states(is_player1=False) # player 2
@@ -561,9 +560,9 @@ class StrategyTabQLearning(Strategy):
         # 1. Stop once the model has trained for some 
         # specified no. of episodes.
         if 'num_episodes_remaining' in stop_data:
-            stop_data['num_episodes_remaining'] == 0 
-            print(f"Max episodes reached.")
-            return True
+            if(stop_data['num_episodes_remaining'] == 0):
+                print(f"Max episodes reached.")
+                return True
         return False
 
     def get_random_state(self, player_num:int) -> int:
@@ -579,15 +578,26 @@ class StrategyTabQLearning(Strategy):
         start_state = None
         if len(self.unexplored_start_states[player_num]) > 0:
             start_state = self.unexplored_start_states[player_num].pop()
-        else:
-            start_state = random.sample(self.q_tab[player_num].keys(), 1)[0]
-        # States are always maintained in the 
-        # first player's perspective.
-        # If this is player 1, then no change.
-        # But if this is player 2, then 
-        # perspective must be switched to that of player 1.
-        if player_num == 2:
-            start_state = switch_player_perspective_int(start_state, self.board_shape)
+            if player_num == 2:
+                start_state = switch_player_perspective_int(start_state, self.board_shape)
+            while (
+                start_state in self.q_tab[player_num] and 
+                len(self.unexplored_start_states[player_num]) > 0
+            ):
+                start_state = self.unexplored_start_states[player_num].pop()
+                
+                # States are always maintained in the 
+                # first player's perspective.
+                # If this is player 1, then no change.
+                # But if this is player 2, then 
+                # perspective must be switched to that of player 1.
+                if player_num == 2:
+                    start_state = switch_player_perspective_int(start_state, self.board_shape)
+        if (
+            start_state is None or 
+            start_state in self.q_tab[player_num]
+        ):
+            start_state = random.choice(list(self.q_tab[player_num].keys()))
         return start_state 
 
     def get_random_new_action(self, 
@@ -642,9 +652,10 @@ class StrategyTabQLearning(Strategy):
                            learning session begins is player 1.
         """
         player_num = 1 if is_player1 else 2
-        print(f'Learning (Starting Player  = {player_num}) ...')
+        print(f'Learning (Starting Player = {player_num}) ...')
         stop_data = {'num_episodes_remaining': max_episodes}
         num_episodes = 0 # Episode counter.
+        max_states_visited = 0 # Max no. of moves explored in any episode.
         try:
             # 1. Loop for each episode until
             #    the algorithm has converged or a 
@@ -653,13 +664,16 @@ class StrategyTabQLearning(Strategy):
                 # Update episode count.
                 num_episodes += 1
                 stop_data['num_episodes_remaining'] -= 1
+                
+                # Reset player for this episode.
+                player_num = 1 if is_player1 else 2
 
                 # 2. Pick a random start state.
                 s = self.get_random_state(player_num)
 
                 # 3. Do while a terminal state has not yet been reached.
                 num_states_visited = 0 # No. of states visited.
-                while not self.is_game_over(s):
+                while self.is_game_over(s) == -1:
                     
                     # 4. From the list of possible actions from this 
                     #    state s, pick a random one.
@@ -703,7 +717,10 @@ class StrategyTabQLearning(Strategy):
                     #    Q(s, a) <-- (1 - alpha) Q(s, a) + alpha [
                     #       R(s, a) + { gamma x max_an[ Q(sn, an) ] }
                     #    ]
-                    if not s in self.q_tab[player_num]:
+                    if (
+                        not s in self.q_tab[player_num] or
+                        not a in self.q_tab[player_num][s]
+                    ):
                         q_s_a = self.q_val_unknown
                     else:
                         q_s_a = self.q_tab[player_num][s][a]

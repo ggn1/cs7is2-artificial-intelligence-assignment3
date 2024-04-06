@@ -652,15 +652,16 @@ class WorldCon4(World):
 
         # Catch all other cases.
         return 0
-
-    def play1game():
-        """
-        Allows playing of a a single game.
-        """
-        # TO DO
     
-    def play():
+    def get_random_start_states(self, is_player1:bool) -> list:
         """
-        Facilitates playing of one or more games.
+        Returns a list of integers corresponding to 
+        random start states for the given player. For player
+        1 this is always just the empty board. For player 2,
+        it is any valid position wherein there is only one
+        of the opponent's pieces on the board.
+        @param is_player1: The player for which the start
+                           states have to be fetched.
+        @param return: List of start states.
         """
-        # TO DO
+        raise Exception("Not implemented!")

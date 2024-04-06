@@ -9,6 +9,7 @@ from utility import int2board
 from utility import board2int
 from utility import track_time
 from utility import print_debug
+from utility import str_to_int_2tuple
 from utility import get_random_free_pos
 from utility import switch_player_perspective
 from utility import switch_player_perspective_int
@@ -647,6 +648,50 @@ class StrategyTabQLearning(Strategy):
                 return True
         return False
 
+    def q_tab_to_json(self, q_tab: dict) -> str:
+        """
+        Converts the q Table into a JSON compatible form
+        by replacing tuple dictionary keys with list 
+        representations of the same.
+        @param q_tab: Q table.
+        @return: JSON string of the given Q table.
+        """
+        q_tab_str = {}
+        for player_num in q_tab.keys():
+            if not player_num in q_tab_str:
+                q_tab_str[player_num] = {}
+            for board_int, actions in q_tab[player_num].items():
+                if not board_int in q_tab_str[player_num]:
+                    q_tab_str[player_num][board_int] = {}
+                for action_tuple, q_val in actions.items():
+                    action_str = str(action_tuple)
+                    q_tab_str[player_num][board_int][action_str] = q_val
+        return json.dumps(q_tab_str)
+
+    def json_str_to_q_tab(self, json_str:str) -> dict:
+        """
+        Converts given JSON string of a Q table
+        into a dictionary that contains tuples
+        as keys as was originally the case.
+        @param json_str: The JSON string of the Q Table.
+        @return: The Q table dictionary.
+        """
+        q_tab_recovered = {}
+        q_tab_json = json.loads(json_str)
+        for player_num in q_tab_json.keys():
+            player_num_int = int(player_num)
+            if not player_num_int in q_tab_recovered:
+                q_tab_recovered[player_num_int] = {}
+            for board_int, actions in q_tab_json[player_num].items():
+                board_int_int = int(board_int)
+                if not board_int_int in q_tab_recovered[player_num_int]:
+                    q_tab_recovered[player_num_int][board_int_int] = {}
+                for action_str, q_val in actions.items():
+                    q_val = float(q_val)
+                    action_tuple = str_to_int_2tuple(action_str)
+                    q_tab_recovered[player_num_int][board_int_int][action_tuple] = q_val
+        return q_tab_recovered
+
     def get_random_state(self, player_num:int) -> int:
         """
         Returns a random state from known
@@ -718,7 +763,8 @@ class StrategyTabQLearning(Strategy):
         max_episodes:int,
         discount_factor:float, # gamma
         learning_rate:float, # alpha
-        is_player1:bool
+        is_player1:bool,
+        start_board:int=-1
     ):
         """ 
         Perform Q learning to determine best 
@@ -732,8 +778,13 @@ class StrategyTabQLearning(Strategy):
                              algorithm may continue until convergence.
         @param is_player1: Whether the player with which this
                            learning session begins is player 1.
+        @param start_board: The integer representation of a valid 
+                            starting board from the perspective
+                            of player 1, to start learning using.
         """
         player_num = 1 if is_player1 else 2
+        if start_board != -1:
+            self.unexplored_start_states[player_num].append(start_board)
         print(f'Learning (Starting Player = {player_num}) ...')
         stop_data = {'num_episodes_remaining': max_episodes}
         num_episodes = 0 # Episode counter.
@@ -846,7 +897,8 @@ class StrategyTabQLearning(Strategy):
             raise Exception(f"File src must be a .json file.")
         
         with open(src, 'r') as f:
-            self.q_tab = np.array(json.load(f))
+            json_str = f.read()
+            self.q_tab = self.json_str_to_q_tab(json_str)
         
         print(f"Loaded Q table from {src}.")
 
@@ -863,7 +915,7 @@ class StrategyTabQLearning(Strategy):
         
         dst = f"{folder}/{name}.json"
         with open(dst, 'w') as f:
-            json.dump(self.q_tab.tolist(), f)
+            f.write(self.q_tab_to_json(self.q_tab))
 
         print(f"Saved Q table at {dst}.")
 

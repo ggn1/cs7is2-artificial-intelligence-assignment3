@@ -490,6 +490,30 @@ def compute_sbsa(
                 ))
     return sbsa_0, sbsa_1
 
+def str_to_int_2tuple(int_2tuple_str:str) -> tuple:
+    """
+    Given a 2 element tuple containing integers 
+    or nested such tuples as a string, 
+    returns the tuple. This recursively does so
+    for nested tuples.
+    @param tuple_str: Tuple as string.
+    @return: Tuple as tuple.
+    """
+    int_2tuple_str = int_2tuple_str[1:len(int_2tuple_str)-1]
+    p1 = int_2tuple_str[:int_2tuple_str.rindex(',')].strip()
+    p2 = int_2tuple_str[int_2tuple_str.rindex(',')+1:].strip()
+    further_processing = {}
+    if len(p1) > 1: further_processing['p1'] = p1
+    else: p1 = int(p1)
+    if len(p2) > 1: further_processing['p2'] = p2
+    else: p2 = int(p2)
+    for k, v in further_processing.items():
+        if k == 'p1':
+            p1 = str_to_int_2tuple(v)
+        elif k == 'p2':
+            p2 = str_to_int_2tuple(v)
+    return (p1, p2)
+
 def board_to_str(
     board:np.ndarray, 
     player1sym:str=None, 

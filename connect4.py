@@ -645,7 +645,7 @@ class WorldCon4(World):
                  of the player that took the action, or -1.
         """
         if type(board) == int:
-            board = int2board(board)
+            board = int2board(board, self.board.shape)
         
         # If this action is illegal,
         # then return -1.
@@ -677,7 +677,7 @@ class WorldCon4(World):
         @return: Value of this state.
         """
         if type(board) == int:
-            board = int2board(board)
+            board = int2board(board, self.board.shape)
 
         # Get SBSA corresponding to this player as
         # well as the opponent for the entire board.

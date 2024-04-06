@@ -21,7 +21,7 @@ if __name__ == "__main__":
     )
     w.configure_players(player1=p1, player2=p2)
     w.play(id="x_def_o_rand", out_config={
-        # "print": {"moves": True, "status":True, "metrics":['game', 'session']},
-        # "log": {"moves": True, "status":True, "metrics":['game', 'session']}
-        "csv": {}
+        "print": {"moves": True, "status":True, "metrics":['game', 'session']},
+        "log": {"moves": True, "status":True, "metrics":['game', 'session']},
+        "csv": {"filname": "ttt"}
     }, num_games=10)

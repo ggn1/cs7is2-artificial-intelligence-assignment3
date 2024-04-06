@@ -16,7 +16,7 @@ def get_datetime_id(dt:datetime=None) -> str:
     """
     if dt is None: dt = datetime.now()
     return (
-        str(dt.day).zfill(2) 
+        str(dt.day).zfill(2)
         + str(dt.month).zfill(2) 
         + str(dt.year).zfill(2)
         + str(dt.hour).zfill(2) 
@@ -31,11 +31,11 @@ def track_time(f:Callable):
     and the value returned by the executed function.
     @param f: Function whose execution time
                 is to be measured.
-    @return: Execution time in seconds.
+    @return: Execution time in milliseconds.
     """
     def wrapper(*args, **kwargs):
-        to_return = {'f_out': None, 'seconds': 0}
-        time_start = time.time() # keep track of time
+        to_return = {'f_out': None, 'milliseconds': 0}
+        time_start = time.time() * 1000 # keep track of time
         try:
             try:
                 res = f(*args, **kwargs)
@@ -46,7 +46,7 @@ def track_time(f:Callable):
         except KeyboardInterrupt:
             print(f"Keyboard Interrupt! {f.__name__}(...)")
         finally:
-            to_return['seconds'] = time.time() - time_start 
+            to_return['milliseconds'] = time.time() * 1000 - time_start 
         return to_return
     return wrapper
 

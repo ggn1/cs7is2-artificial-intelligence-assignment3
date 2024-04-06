@@ -346,7 +346,7 @@ class World:
             raise Exception('No players. Please configure players.')
         
         outcome = {sym: {
-            'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0,
+            'won': 0, 'lost': 0, 'avg_milliseconds_per_move': 0, 'num_moves': 0,
         } for sym in self.player_symbols.values()}
 
         # Reset game.
@@ -379,9 +379,9 @@ class World:
         while self.is_game_over(self.board) == -1:
             next_player = self.player1 if self.next_turn == 1 else self.player2
             move_pos_out = next_player.get_move(self.board)
-            outcome[self.player_symbols[self.next_turn]]['avg_seconds_per_move'] = (
-                outcome[self.player_symbols[self.next_turn]]['avg_seconds_per_move'] 
-                + move_pos_out['seconds']
+            outcome[self.player_symbols[self.next_turn]]['avg_milliseconds_per_move'] = (
+                outcome[self.player_symbols[self.next_turn]]['avg_milliseconds_per_move'] 
+                + move_pos_out['milliseconds']
             ) / 2
             move_action = (move_pos_out['f_out'], self.next_turn)
             is_success = self.make_move(move_action) # Board perspective switched.
@@ -404,39 +404,6 @@ class World:
             outcome[self.player_symbols[self.next_turn]]['won'] += 1
         elif self.is_winner(self.board) == -1:
             outcome[self.player_symbols[self.last_turn]]['won'] += 1
-
-        # Record metrics in CSV format if needed.
-            winner = 0
-            if outcome[self.player_symbols[1]]['won'] > 0:
-                winner = 1
-            elif outcome[self.player_symbols[2]]['won'] > 0:
-                winner = 2
-            if "csv" in out_config:
-                self.output_handler.append_to_csv(
-                    world_type=self.type,
-                    player1=self.player_symbols[1],
-                    player2=self.player_symbols[2],
-                    outcome=winner,
-                    avg_seconds_per_move_player1=outcome[
-                        self.player_symbols[1]
-                    ]['avg_seconds_per_move'],
-                    avg_seconds_per_move_player2=outcome[
-                        self.player_symbols[2]
-                    ]['avg_seconds_per_move'],
-                    num_moves=outcome[
-                        self.player_symbols[1]
-                    ]['num_moves'] + outcome[
-                        self.player_symbols[2]
-                    ]['num_moves'],
-                    filename=(
-                        out_config['csv']['filename']
-                        if 'filename' in out_config['csv']
-                        else None
-                    ),
-                    session_id=session_id,
-                    session_timestamp=session_timestamp,
-                    game_num=game_num
-                )
 
         # Print / log game outcome if needed.
         if (
@@ -487,11 +454,11 @@ class World:
 
         # Initialize average game outcomes for each game.
         outcome_all_games = {sym: {
-            'won': 0, 'lost': 0, 'avg_seconds_per_move': 0, 'num_moves': 0,
+            'won': 0, 'lost': 0, 'avg_milliseconds_per_move': 0, 'num_moves': 0,
         } for sym in self.player_symbols.values()}
         outcome_all_games['num_draws'] = 0
         outcome_all_games['num_games'] = num_games
-        outcome_all_games['seconds'] = 0
+        outcome_all_games['milliseconds'] = 0
         
         # Print / log status update if required.
         if "print" in out_config and out_config['print']['status']:
@@ -515,6 +482,40 @@ class World:
                 session_timestamp=session_timestamp
             )
 
+            # Record metrics in CSV format if needed.
+            winner = 0
+            if outcome['f_out'][self.player_symbols[1]]['won'] > 0:
+                winner = 1
+            elif outcome['f_out'][self.player_symbols[2]]['won'] > 0:
+                winner = 2
+            if "csv" in out_config:
+                self.output_handler.append_to_csv(
+                    world_type=self.type,
+                    player1=self.player_symbols[1],
+                    player2=self.player_symbols[2],
+                    outcome=winner,
+                    avg_milliseconds_per_move_player1=outcome['f_out'][
+                        self.player_symbols[1]
+                    ]['avg_milliseconds_per_move'],
+                    avg_milliseconds_per_move_player2=outcome['f_out'][
+                        self.player_symbols[2]
+                    ]['avg_milliseconds_per_move'],
+                    num_moves=outcome['f_out'][
+                        self.player_symbols[1]
+                    ]['num_moves'] + outcome['f_out'][
+                        self.player_symbols[2]
+                    ]['num_moves'],
+                    filename=(
+                        out_config['csv']['filename']
+                        if 'filename' in out_config['csv']
+                        else None
+                    ),
+                    session_id=id,
+                    session_timestamp=session_timestamp,
+                    game_num=i+1,
+                    milliseconds=outcome['milliseconds']
+                )
+
             # Player 1's average performance.
             outcome_all_games[self.player1.symbol]['won'] += outcome['f_out'][
                 self.player1.symbol
@@ -525,9 +526,9 @@ class World:
             outcome_all_games[self.player1.symbol]['num_moves'] += outcome['f_out'][
                 self.player1.symbol
             ]['num_moves']
-            outcome_all_games[self.player1.symbol]['avg_seconds_per_move'] = (
-                outcome_all_games[self.player1.symbol]['avg_seconds_per_move'] + 
-                outcome['f_out'][self.player1.symbol]['avg_seconds_per_move']
+            outcome_all_games[self.player1.symbol]['avg_milliseconds_per_move'] = (
+                outcome_all_games[self.player1.symbol]['avg_milliseconds_per_move'] + 
+                outcome['f_out'][self.player1.symbol]['avg_milliseconds_per_move']
             ) / 2
 
             # Player 2's average performance.
@@ -540,15 +541,15 @@ class World:
             outcome_all_games[self.player2.symbol]['num_moves'] += outcome['f_out'][
                 self.player2.symbol
             ]['num_moves']
-            outcome_all_games[self.player2.symbol]['avg_seconds_per_move'] = (
-                outcome_all_games[self.player2.symbol]['avg_seconds_per_move'] + 
-                outcome['f_out'][self.player2.symbol]['avg_seconds_per_move']
+            outcome_all_games[self.player2.symbol]['avg_milliseconds_per_move'] = (
+                outcome_all_games[self.player2.symbol]['avg_milliseconds_per_move'] + 
+                outcome['f_out'][self.player2.symbol]['avg_milliseconds_per_move']
             ) / 2
 
             # Average game time taken.
-            outcome_all_games['seconds'] = (
-                outcome_all_games['seconds'] +
-                outcome['seconds']
+            outcome_all_games['milliseconds'] = (
+                outcome_all_games['milliseconds'] +
+                outcome['milliseconds']
             ) / 2
 
         #  Determine no. of draws.

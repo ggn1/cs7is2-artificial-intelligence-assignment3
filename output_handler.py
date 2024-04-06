@@ -135,10 +135,11 @@ class OutputHandler:
 
     def append_to_csv(self, 
         world_type:str, player1:str, player2:str, outcome:int,
-        avg_seconds_per_move_player1:float, 
-        avg_seconds_per_move_player2:float,
+        avg_milliseconds_per_move_player1:float, 
+        avg_milliseconds_per_move_player2:float,
         num_moves:int, session_id:str, session_timestamp:str, 
-        game_num:int, moves_visited:int=None, filename:str=None
+        milliseconds:float, game_num:int, 
+        moves_visited:int=None, filename:str=None
     ):
         """
         Saves metrics into a file.
@@ -151,17 +152,17 @@ class OutputHandler:
             with open(dst, 'w') as f:
                 f.write(
                     "world_type,player1,player2,outcome,"
-                    + "avg_seconds_per_move_player1,"
-                    + "avg_seconds_per_move_player2,"
+                    + "avg_milliseconds_per_move_player1,"
+                    + "avg_milliseconds_per_move_player2,"
                     + "num_moves,session_id,session_timestamp,"
-                    + "game_num,moves_visited\n"
+                    + "milliseconds,game_num,moves_visited\n"
                 )
         to_save = (
             f"{world_type},{player1},{player2},{outcome},"
-            + f"{avg_seconds_per_move_player1},"
-            + f"{avg_seconds_per_move_player2},"
+            + f"{avg_milliseconds_per_move_player1},"
+            + f"{avg_milliseconds_per_move_player2},"
             + f"{num_moves},{session_id},"
-            + f"{session_timestamp},{game_num},"
+            + f"{session_timestamp},{milliseconds},{game_num},"
         )
         if moves_visited is not None:
             to_save += f"{moves_visited}"

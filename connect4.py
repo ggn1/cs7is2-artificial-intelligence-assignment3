@@ -28,22 +28,6 @@ class WorldCon4(World):
     game board and game mechanics.
     """
 
-    def get_actions(self, is_player1:bool) -> list:
-        """
-        Returns list of all possible actions.
-        Actions are 2 tuple with the first 
-        element being the index of the column that 
-        the player is dropping their piece. The 
-        The second element is whether this is player 1
-        or 2 (1 => player 1, 2 => player 2).
-        @param is_player1: Whether this is player 1 or 2.
-        @return: List of all possible actions for this player.
-        """
-        return [
-            (col_idx, 1) if is_player1 else (col_idx, 2)
-            for col_idx in range(self.board.shape[1])
-        ]
-
     def is_adjacent_playable_free(self,
         num_board:np.ndarray,
         pos_start:tuple, 
@@ -355,6 +339,48 @@ class WorldCon4(World):
             return True
         return num_board[row_idx_below, col_idx_below] != -1
 
+    def get_actions(self, is_player1:bool) -> list:
+        """
+        Returns list of all possible actions.
+        Actions are 2 tuple with the first 
+        element being the index of the column that 
+        the player is dropping their piece. The 
+        The second element is whether this is player 1
+        or 2 (1 => player 1, 2 => player 2).
+        @param is_player1: Whether this is player 1 or 2.
+        @return: List of all possible actions for this player.
+        """
+        return [
+            (col_idx, 1) if is_player1 else (col_idx, 2)
+            for col_idx in range(self.board.shape[1])
+        ]
+
+    def is_legal(self, num_board:np.ndarray, action:tuple) -> bool:
+        """
+        Returns whether a given action is legal.
+        An action is not legal if it is not
+        possible.
+        @param num_board: Game board from the perspective
+                          of some player.
+        @param action: The action to take.
+        @return: True if action is legal and false otherwise.
+        """
+        # Player part of the action may only be either 1 or 0.
+        if not action[1] in [1, 2]:
+            return False
+        
+        # Action tries to put piece in a non-existent
+        # column => illegal action.
+        if action[0] < 0 or action[0] >= num_board.shape[1]:
+            return False
+
+        # Action tries to input a piece into a 
+        # column that is already full => illegal action.
+        if num_board[0, action[0]] != -1: 
+            return False
+                
+        return True
+
     def is_valid(self, num_board:np.ndarray, is_player1:bool) -> bool:
         """ Given a board, return if it is a valid
             state or not.
@@ -459,11 +485,9 @@ class WorldCon4(World):
         for i in range(1, num_board.shape[0], 2):
             if (
                 is_player1 and
-                0 in num_board[i, :] and 
-                (
+                0 in num_board[i, :] and (
                     i == (num_board.shape[0] - 1) and
-                    not 1 in num_board[i, :]
-                ) or (
+                    not 1 in num_board[i, :] or
                     i != (num_board.shape[0] - 1) and
                     not 0 in num_board[i+1:, :]
                 )   
@@ -472,11 +496,9 @@ class WorldCon4(World):
             
             elif (
                 not is_player1 and
-                1 in num_board[i, :] and 
-                (
+                1 in num_board[i, :] and (
                     i == (num_board.shape[0] - 1) and
-                    not 0 in num_board[i, :]
-                ) or (
+                    not 0 in num_board[i, :] or
                     i != (num_board.shape[0] - 1) and
                     not 1 in num_board[i+1:, :]
                 )   
@@ -526,20 +548,43 @@ class WorldCon4(World):
                 
     def get_next_state(self, board, action:tuple) -> int:
         """
-        Given the integer representation of a
-        game board containing numbers
+        Given a game board containing numbers
         as per a given player's perspective,
         and an action to take, returns an 
         integer indicative of the resulting
         next board state. The value -1 is returned
         if the action is illegal.
-        @param board_int: Game board.
+        @param board_int: Current game board from the
+                          perspective of the player who
+                          is going ot execute the given action.
+                          It is assumed that this state is valid.
         @param action: The action to take.
-        @return: Integer of next board or -1.
+        @return: Integer of next board from the perspective
+                 of the player that took the action, or -1.
         """
         if type(board) == int:
             board = int2board(board)
-        # TO DO
+        
+        # If this action is illegal,
+        # then return -1.
+        if not self.is_legal(board, action):
+            return -1
+        
+        # If the resulting state is invalid,
+        # then return -1.
+        is_player1 = (action[1]==1)
+        next_state = board.copy()
+        
+        # Add player's piece into column.
+        col_idx = action[0]
+        col = next_state[:, col_idx]
+        row_idx = np.where(col == -1)[0][-1]
+        next_state[row_idx, col_idx] = 1
+
+        if not self.is_valid(next_state, is_player1):
+            return -1
+        
+        return board2int(next_state)
 
     def state_eval(self, board, is_my_turn_next:bool):
         """
@@ -653,7 +698,7 @@ class WorldCon4(World):
         # Catch all other cases.
         return 0
     
-    def get_random_start_states(self, is_player1:bool) -> list:
+    def get_start_states(self, is_player1:bool) -> list:
         """
         Returns a list of integers corresponding to 
         random start states for the given player. For player
@@ -664,4 +709,19 @@ class WorldCon4(World):
                            states have to be fetched.
         @param return: List of start states.
         """
-        raise Exception("Not implemented!")
+        # For player 1
+        if is_player1:
+            return [board2int(np.full(self.board.shape, -1))] # Empty board.
+        
+        # For player 2
+        # Valid start state would be an empty board
+        # with player 1's piece in any of the
+        # bottommost rows.
+        else:
+            start_states = []
+            row_idx = self.board.shape[0]-1
+            for col_idx in range(self.board.shape[1]):
+                board = np.full(self.board.shape, -1)
+                board[row_idx, col_idx] = 0
+                start_states.append(board2int(board))
+            return start_states

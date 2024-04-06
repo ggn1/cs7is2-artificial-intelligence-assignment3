@@ -107,8 +107,7 @@ class World:
 
     def get_next_state(self, board, action:tuple) -> int:
         """
-        Given the integer representation of a
-        game board containing numbers
+        Given a game board containing numbers
         as per a given player's perspective,
         and an action to take, returns an 
         integer indicative of the resulting
@@ -134,7 +133,7 @@ class World:
         """
         raise Exception("Not implemented!")
 
-    def get_random_start_states(self, is_player1:bool) -> list:
+    def get_start_states(self, is_player1:bool) -> list:
         """
         Returns a list of integers corresponding to 
         random start states for the given player. For player
@@ -210,17 +209,7 @@ class World:
         @param action: The action to take.
         @return: True if action is legal and false otherwise.
         """
-        # Action tries to put piece in a non-existent
-        # column => illegal action.
-        if action[0] < 0 or action[0] >= num_board.shape[1]:
-            return False
-
-        # Action tries to input a piece into a 
-        # column that is already full => illegal action.
-        if num_board[0, action[0]] != -1: 
-            return False
-        
-        return True
+        raise("Not Implemented!")
 
     def get_reward(self, board, action:tuple) -> int:
         """

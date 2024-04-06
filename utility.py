@@ -337,8 +337,8 @@ def get_random_free_pos(board:np.ndarray) -> tuple:
                 is free. Returns (-1, -1) if no free spaces.
     """
     empty_spots = []
-    for i in range(len(board)):
-        for j in range(len(board[0])):
+    for i in range(board.shape[0]):
+        for j in range(board.shape[1]):
             if board[i][j] == -1:
                 empty_spots.append((i, j))
     if len(empty_spots) <= 0:
@@ -489,3 +489,24 @@ def compute_sbsa(
                     )
                 ))
     return sbsa_0, sbsa_1
+
+def board_to_str(board:np.ndarray, player1sym:str, player2sym:str) -> str:
+    """
+    Given a board with numbers such that 1 => player 1, 0 => player 2
+    and -1 => empty space, this function returns a string version
+    of the board.
+    @param board: Board to stringify.
+    @param player1sym: Symbol of the first player.
+    @param player2sym: Symbol of the second player.
+    @return: Board as a string.
+    """
+    to_return = ''
+    for row in board:
+        to_return += " ".join([
+            "#" if num == -1 else 
+            player1sym if num == 1 else 
+            player2sym
+            for num in row
+        ])
+        to_return += "\n"
+    return to_return

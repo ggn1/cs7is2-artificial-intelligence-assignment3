@@ -28,6 +28,86 @@ class WorldCon4(World):
     game board and game mechanics.
     """
 
+    def can_connect4(self, board:np.ndarray):
+        """ For both given player and opponent on 
+            a given game board, returns index of 
+            a position which if filled will result
+            in connect 4.
+            @param board: Game board.
+            @return: A two tuple where the first element
+                     is a list of positions that if 
+                     filled, can connect 4 for player 0
+                     and the second element is the same 
+                     for player 1.
+        """
+
+        # Get SBSA corresponding to this player as
+        # well as the opponent for the entire board.
+        sbsa_0 = {} # Dictionary of sbsa counts and positions for opponent.
+        sbsa_1 = {} # Dictionary of sbsa counts and positions for self.
+        col_idx = 3
+        for row_idx in range(board.shape[0]):    
+            sbsa_diags_row_0, sbsa_diags_row_1 = self.compute_sbsa(
+                board, row_idx, col_idx, 
+                directions=['row', 'diag', 'antidiag']
+            )
+            for dir, dir_sbsa in sbsa_diags_row_0.items():
+                for k, v in dir_sbsa.items():
+                    v_new = [(t[0], t[1], t[2], dir) for t in v]
+                    if k in sbsa_0: sbsa_0[k] += v_new
+                    else: sbsa_0[k] = v_new
+            for dir, dir_sbsa in sbsa_diags_row_1.items():
+                for k, v in dir_sbsa.items():
+                    v_new = [(t[0], t[1], t[2], dir) for t in v]
+                    if k in sbsa_1: sbsa_1[k] += v_new
+                    else: sbsa_1[k] = v_new
+        row_idx = 0
+        for col_idx in range(board.shape[1]):
+            sbsa_cols_0, sbsa_cols_1 = self.compute_sbsa(
+                board, row_idx, col_idx, 
+                directions=['col']
+            )
+            for dir, dir_sbsa in sbsa_cols_0.items():
+                for k, v in dir_sbsa.items():
+                    v_new = [(t[0], t[1], t[2], dir) for t in v]
+                    if k in sbsa_0: sbsa_0[k] += v_new
+                    else: sbsa_0[k] = v_new
+            for dir, dir_sbsa in sbsa_cols_1.items():
+                for k, v in dir_sbsa.items():
+                    v_new = [(t[0], t[1], t[2], dir) for t in v]
+                    if k in sbsa_1: sbsa_1[k] += v_new
+                    else: sbsa_1[k] = v_new
+
+        cc4_1 = []
+        if 3 in sbsa_1:
+            for sbs3 in sbsa_1[3]:
+                cc4_1 += sbs3[2]
+        if 2 in sbsa_1:
+            for sbs2 in sbsa_1[2]:
+                cc4b = self.cc4_broken(
+                    num_board=board,
+                    pos_start=sbs2[0],
+                    pos_end=sbs2[1],
+                    direction=sbs2[3]
+                )
+                cc4_1 += cc4b
+
+        cc4_0 = []
+        if 3 in sbsa_0:
+            for sbs3 in sbsa_0[3]:
+                cc4_0 += sbs3[2]
+        if 2 in sbsa_0:
+            for sbs2 in sbsa_0[2]:
+                cc4b = self.cc4_broken(
+                    num_board=board,
+                    pos_start=sbs2[0],
+                    pos_end=sbs2[1],
+                    direction=sbs2[3]
+                )
+                cc4_0 += cc4b
+
+        return cc4_0, cc4_1
+
     def is_adjacent_playable_free(self,
         num_board:np.ndarray,
         pos_start:tuple, 
@@ -47,9 +127,9 @@ class WorldCon4(World):
         @param pos_end: Point after which an adjacent position
                         shall be searched for.
         @param direction: Direction in which to search.
-        @param return: True if such a point is found and false
-                    otherwise.
+        @param return: A list of free playable adjacent positions.
         """
+        to_return = []
         a_pos_start = (-1, -1)
         a_pos_end = (-1, -1)
         if direction == 'row':
@@ -71,7 +151,7 @@ class WorldCon4(World):
             a_pos_start[1] < num_board.shape[1] and
             num_board[a_pos_start] == -1 and 
             self.check_is_filled_below(num_board, a_pos_start[0], a_pos_start[1])
-        ): return True
+        ): to_return.append(a_pos_start)
         if (
             a_pos_end[0] >= 0 and 
             a_pos_end[0] < num_board.shape[0] and
@@ -79,8 +159,8 @@ class WorldCon4(World):
             a_pos_end[1] < num_board.shape[1] and
             num_board[a_pos_end] == -1 and
             self.check_is_filled_below(num_board, a_pos_end[0], a_pos_end[1])
-        ): return True
-        return False 
+        ): to_return.append(a_pos_end)
+        return to_return 
 
     def cc4_broken(self,
         num_board:np.ndarray,
@@ -102,8 +182,8 @@ class WorldCon4(World):
         @param pos_end: Point after which an adjacent position
                         shall be searched for.
         @param direction: Direction in which to search.
-        @param return: True if such a point is found and false
-                       otherwise.
+        @param return: A list of positions that may be 
+                       filled to connect 4.
         """
         # Get positions adjacent by 1 and 2 
         # spots in given direction.
@@ -136,6 +216,7 @@ class WorldCon4(World):
         # and if spot adjacent by 2 is same symbol.
         is_free = {'a_pos_start': False, 'a_pos_end': False}
         has_sym = {'aa_pos_start': False, 'aa_pos_end': False}
+        to_return = []
         for i in range(2):
             if i == 0: # Check if immediate adjacent space is free.
                 if (
@@ -169,14 +250,15 @@ class WorldCon4(World):
                     aa_pos_end[1] >= 0 and
                     aa_pos_end[1] < num_board.shape[1] and
                     num_board[aa_pos_end] == num_board[pos_end]
-                ): is_free['aa_pos_end'] = True
+                ): has_sym['aa_pos_end'] = True
 
-        return (
-            is_free['a_pos_start'] and 
-            has_sym['aa_pos_start'] or
-            is_free['a_pos_end'] and 
-            has_sym['aa_pos_end']
-        ) 
+        if is_free['a_pos_start'] and has_sym['aa_pos_start']:
+            to_return.append(a_pos_start)
+        
+        if is_free['a_pos_end'] and has_sym['aa_pos_end']:
+            to_return.append(a_pos_end)
+
+        return to_return
 
     def compute_sbsa(self,
         num_board: np.ndarray, 
@@ -634,9 +716,6 @@ class WorldCon4(World):
                     if k in sbsa_1: sbsa_1[k] += v_new
                     else: sbsa_1[k] = v_new
 
-        print_debug(f"sbsa_0 = {sbsa_0}")
-        print_debug(f"sbsa_1 = {sbsa_1}")
-
         # If I have won, then great.
         if sum([1 if n >=4 else 0 for n in sbsa_1.keys()]) > 0:
             return 100
@@ -653,29 +732,29 @@ class WorldCon4(World):
         icc4 = 0
         if 3 in sbsa_1:
             for sbsa in sbsa_1[3]:
-                if sbsa[2]: icc4 += 1
+                if len(sbsa[2])>0: icc4 += 1
         if 2 in sbsa_1:
             for sbsa in sbsa_1[2]:
-                if self.cc4_broken(
+                if len(self.cc4_broken(
                     num_board=board,
                     pos_start=sbsa[0],
                     pos_end=sbsa[1],
                     direction=sbsa[3]
-                ): icc4 += 1
+                ))>0: icc4 += 1
 
         # Get no. of opportunities where my opponent can connect 4.
         occ4 = 0
         if 3 in sbsa_0:
             for sbsa in sbsa_0[3]:
-                if sbsa[2]: occ4 += 1
+                if len(sbsa[2])>0: occ4 += 1
         if 2 in sbsa_0:
             for sbsa in sbsa_0[2]:
-                if self.cc4_broken(
+                if len(self.cc4_broken(
                     num_board=board,
                     pos_start=sbsa[0],
                     pos_end=sbsa[1],
                     direction=sbsa[3]
-                ): occ4 += 1
+                ))>0: occ4 += 1
         
         # If it is my turn next ...
         if is_my_turn_next:

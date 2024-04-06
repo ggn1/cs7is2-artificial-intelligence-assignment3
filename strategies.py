@@ -10,9 +10,13 @@ from utility import board2int
 from utility import track_time
 from utility import print_debug
 from utility import get_random_free_pos
-from utility import get_opposite_symbol
 from utility import switch_player_perspective
 from utility import switch_player_perspective_int
+
+# Note: Here get_move(...) function does not deal
+#       with the case where a move is not possible
+#       because this function is only ever called
+#       with valid non-terminal states and legal actions. 
 
 class Strategy:
     """ 
@@ -302,6 +306,84 @@ class StrategyManualCon4(Strategy):
         col = input('Enter column: ')
         return int(col)
 
+class StrategyDefaultCon4(Strategy):
+    """ 
+    This object defines what a 
+    game strategy should comprise.
+    """
+    def __init__(self, 
+        can_connect4=Callable,
+        name:str=None
+    ):
+        """ 
+        Constructor. 
+        @param name: Strategy name.
+        @param can_connect4: A function that returns position where
+                             if a piece if placed, can connect 4
+                             for both player 1 and 0.
+        """
+        super().__init__(name=name)
+        self.can_connect4 = can_connect4
+
+    def __check_col_free_playable(self, 
+        board:np.ndarray, 
+        col_idx:int
+    ) -> bool:
+        """
+        Checks if a column contains a free playable position.
+        A position is free if it contains -1.
+        A free position is playable if is filled below.
+        @param board: Game board expressed in numbers 
+                      from the perspective of a player.
+        @param col_idx: The index of a column in this board.
+        @return: True if given column has a free playable spot 
+                 and false otherwise.
+        """
+        if col_idx > board.shape[1]:
+            return False
+        col = board[:, col_idx]
+        row_indices = np.where(col == -1)[0]
+        if len(row_indices) > 0:
+            row_idx = row_indices[-1] # last occurrence
+            if board[row_idx, col_idx] != -1:
+                return False
+            row_below_idx = row_idx + 1
+            if (
+                row_below_idx < board.shape[0]
+                and board[row_below_idx, col_idx] == -1
+            ): return False
+            return True
+        else:
+            return False
+
+    @track_time
+    def get_move(self, board:np.ndarray, *args, **kwargs) -> tuple:
+        """ 
+        Give a board position returns a
+        position on the board where the player
+        can place its next piece.
+        @param board: Game board from the perspective
+                      of the player who is to make the
+                      move.
+        @return: Action position.
+        """
+        ccn_0, ccn_1 = self.can_connect4(board)
+
+        # If I can win, the make this move.
+        if len(ccn_1) > 0:
+            return random.choice(ccn_1)[1]
+        
+        # Else if opponent can win, then block.
+        elif len(ccn_0) > 0:
+            return random.choice(ccn_0)[1]
+        
+        # Else, return a random playable free position.
+        col_idx_list = list(range(board.shape[1]))
+        random.shuffle(col_idx_list)
+        for col_idx in col_idx_list:
+            if self.__check_col_free_playable(board, col_idx):
+                return col_idx
+            
 class StrategyMiniMax(Strategy):
     """
     An agent that learn to play the given game using 
@@ -348,7 +430,7 @@ class StrategyMiniMax(Strategy):
         self.depth = depth
         self.alpha_beta = alpha_beta
 
-    def minimax(self, 
+    def __minimax(self, 
         board:np.ndarray, 
         is_max_player:bool,
         actions:list,
@@ -415,7 +497,7 @@ class StrategyMiniMax(Strategy):
             ):
                 next_state = int2board(next_state_int_action[0], board.shape) # my perspective
                 action = next_state_int_action[1] # my move
-                out = self.minimax(
+                out = self.__minimax(
                     board = switch_player_perspective(next_state), # opponent's perspective
                     is_max_player = False, # The minimizing player (opponent) goes next.
                     actions = actions+[action],
@@ -445,7 +527,7 @@ class StrategyMiniMax(Strategy):
             ):
                 next_state = int2board(next_state_int_action[0], board.shape) # opponent's perspective
                 action = next_state_int_action[1] # opponent's move
-                out = self.minimax(
+                out = self.__minimax(
                     board = switch_player_perspective(next_state), # my perspective
                     is_max_player = True, # The maximizing player (me) goes next.
                     actions = actions+[action],
@@ -480,7 +562,7 @@ class StrategyMiniMax(Strategy):
                            false otherwise.
         @return: Action position.
         """
-        out = self.minimax( # This player is always the maximizing player.
+        out = self.__minimax( # This player is always the maximizing player.
             board=board, depth=self.depth, actions=[], 
             is_player1=is_player1, is_max_player=True,
             alpha_beta=[float('-inf'), float('inf')] if self.alpha_beta else None,

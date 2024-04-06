@@ -490,7 +490,11 @@ def compute_sbsa(
                 ))
     return sbsa_0, sbsa_1
 
-def board_to_str(board:np.ndarray, player1sym:str, player2sym:str) -> str:
+def board_to_str(
+    board:np.ndarray, 
+    player1sym:str=None, 
+    player2sym:str=None
+) -> str:
     """
     Given a board with numbers such that 1 => player 1, 0 => player 2
     and -1 => empty space, this function returns a string version
@@ -500,8 +504,14 @@ def board_to_str(board:np.ndarray, player1sym:str, player2sym:str) -> str:
     @param player2sym: Symbol of the second player.
     @return: Board as a string.
     """
+    if player1sym is None:
+        player1sym = str(1)
+    if player2sym is None:
+        player2sym = str(0)
     to_return = ''
+    row_idx = 0
     for row in board:
+        to_return += str(row_idx) + " "
         to_return += " ".join([
             "#" if num == -1 else 
             player1sym if num == 1 else 
@@ -509,4 +519,6 @@ def board_to_str(board:np.ndarray, player1sym:str, player2sym:str) -> str:
             for num in row
         ])
         to_return += "\n"
+        row_idx += 1
+    to_return += "  " + " ".join(str(i) for i in range(board.shape[1])) + "\n"
     return to_return

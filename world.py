@@ -69,9 +69,13 @@ class World:
             self.player_symbols[self.next_turn]
         )
         to_return = ''
+        row_idx = 0
         for row in board_world_perspective:
+            to_return += str(row_idx) + " "
             to_return += " ".join(row)
             to_return += "\n"
+            row_idx += 1
+        to_return += "  " + " ".join(str(i) for i in range(self.board.shape[1])) + "\n"
         to_return += f"next turn = {self.player_symbols[self.next_turn]}"
         return to_return
 

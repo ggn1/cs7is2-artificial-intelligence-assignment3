@@ -138,8 +138,7 @@ class OutputHandler:
         avg_milliseconds_per_move_player1:float, 
         avg_milliseconds_per_move_player2:float,
         num_moves:int, session_id:str, session_timestamp:str, 
-        milliseconds:float, game_num:int, 
-        moves_visited:int=None, filename:str=None
+        milliseconds:float, game_num:int,filename:str=None
     ):
         """
         Saves metrics into a file.
@@ -162,11 +161,8 @@ class OutputHandler:
             + f"{avg_milliseconds_per_move_player1},"
             + f"{avg_milliseconds_per_move_player2},"
             + f"{num_moves},{session_id},"
-            + f"{session_timestamp},{milliseconds},{game_num},"
+            + f"{session_timestamp},{milliseconds},{game_num}\n"
         )
-        if moves_visited is not None:
-            to_save += f"{moves_visited}"
-        to_save += "\n"
 
         with open(dst, "a") as f:
             f.write(to_save)

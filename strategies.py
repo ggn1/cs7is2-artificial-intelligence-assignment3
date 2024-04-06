@@ -2,6 +2,7 @@
 
 import os
 import json
+import time
 import random
 import numpy as np
 from typing import Callable
@@ -24,13 +25,9 @@ class Strategy:
     This object defines what a 
     game strategy should comprise.
     """
-    def __init__(self, name:str=None):
-        """
-        Constructor.
-        @param name: Name of strategy.
-        @param actions: List of possible actions (= board positions).
-        """
-        self.name = type(self).__name__ if name is None else name
+    def __init__(self):
+        """ Constructor. """
+        self.name = type(self).__name__
 
     @track_time
     def get_move(self, board:np.ndarray, *args, **kwargs) -> tuple:
@@ -312,10 +309,7 @@ class StrategyDefaultCon4(Strategy):
     This object defines what a 
     game strategy should comprise.
     """
-    def __init__(self, 
-        can_connect4=Callable,
-        name:str=None
-    ):
+    def __init__(self, can_connect4=Callable):
         """ 
         Constructor. 
         @param name: Strategy name.
@@ -323,7 +317,7 @@ class StrategyDefaultCon4(Strategy):
                              if a piece if placed, can connect 4
                              for both player 1 and 0.
         """
-        super().__init__(name=name)
+        super().__init__()
         self.can_connect4 = can_connect4
 
     def __check_col_free_playable(self, 
@@ -431,7 +425,7 @@ class StrategyMiniMax(Strategy):
         self.depth = depth
         self.alpha_beta = alpha_beta
 
-    def __minimax(self, 
+    def minimax(self, 
         board:np.ndarray, 
         is_max_player:bool,
         actions:list,
@@ -498,7 +492,7 @@ class StrategyMiniMax(Strategy):
             ):
                 next_state = int2board(next_state_int_action[0], board.shape) # my perspective
                 action = next_state_int_action[1] # my move
-                out = self.__minimax(
+                out = self.minimax(
                     board = switch_player_perspective(next_state), # opponent's perspective
                     is_max_player = False, # The minimizing player (opponent) goes next.
                     actions = actions+[action],
@@ -528,7 +522,7 @@ class StrategyMiniMax(Strategy):
             ):
                 next_state = int2board(next_state_int_action[0], board.shape) # opponent's perspective
                 action = next_state_int_action[1] # opponent's move
-                out = self.__minimax(
+                out = self.minimax(
                     board = switch_player_perspective(next_state), # my perspective
                     is_max_player = True, # The maximizing player (me) goes next.
                     actions = actions+[action],
@@ -563,7 +557,7 @@ class StrategyMiniMax(Strategy):
                            false otherwise.
         @return: Action position.
         """
-        out = self.__minimax( # This player is always the maximizing player.
+        out = self.minimax( # This player is always the maximizing player.
             board=board, depth=self.depth, actions=[], 
             is_player1=is_player1, is_max_player=True,
             alpha_beta=[float('-inf'), float('inf')] if self.alpha_beta else None,
@@ -595,12 +589,10 @@ class StrategyTabQLearning(Strategy):
         get_next_state:Callable,
         get_actions:Callable,
         get_start_states:Callable,
-        board_shape:tuple,
-        name:str=None
+        board_shape:tuple
     ):
         """
         Constructor.
-        @param name: Name of the strategy.
         @param is_game_over: A function that returns true if a
                              given state is terminal or false
                              otherwise.
@@ -614,7 +606,7 @@ class StrategyTabQLearning(Strategy):
         @param board_shape: Shape of the board.
         @param actions: List of all possible actions.
         """
-        super().__init__(name=name)
+        super().__init__()
         self.is_game_over = is_game_over
         self.get_next_states = get_next_states
         self.get_next_state = get_next_state
@@ -640,13 +632,33 @@ class StrategyTabQLearning(Strategy):
         @return: True if the stopping condition has
                  been met and false otherwise.
         """
-        # 1. Stop once the model has trained for some 
+        # 1. Stop if execution time has exceeded
+        #    specified max no. of seconds.
+        if 'time' in stop_data:
+            time_now = time.time()
+            if (
+                time_now - stop_data['time']['time_start'] >= 
+                stop_data['time']['max_seconds']
+            ): 
+                print(
+                    "Max time reached " +
+                    f"({stop_data['time']['max_seconds']} s)."
+                )
+                return True, 'time'
+
+        # 2. Stop if the model has trained for some 
         # specified no. of episodes.
-        if 'num_episodes_remaining' in stop_data:
-            if(stop_data['num_episodes_remaining'] == 0):
-                print(f"Max episodes reached.")
-                return True
-        return False
+        if (
+            stop_data['episodes']['num_episodes'] >=
+            stop_data['episodes']['max_episodes']
+        ):
+            print(
+                "Max no. of episodes reached " +
+                f"({stop_data['episodes']['num_episodes']})."
+            )
+            return True, 'episodes'
+        
+        return False, 'none'
 
     def q_tab_to_json(self, q_tab: dict) -> str:
         """
@@ -759,11 +771,13 @@ class StrategyTabQLearning(Strategy):
             actions.remove(action)
         return -1
 
+    @track_time
     def learn(self,
         max_episodes:int,
         discount_factor:float, # gamma
         learning_rate:float, # alpha
         is_player1:bool,
+        max_seconds:int=None,
         start_board:int=-1
     ):
         """ 
@@ -778,6 +792,8 @@ class StrategyTabQLearning(Strategy):
                              algorithm may continue until convergence.
         @param is_player1: Whether the player with which this
                            learning session begins is player 1.
+        @param max_seconds: Maximum time that this algorithm
+                            is allowed to train for.
         @param start_board: The integer representation of a valid 
                             starting board from the perspective
                             of player 1, to start learning using.
@@ -785,108 +801,122 @@ class StrategyTabQLearning(Strategy):
         player_num = 1 if is_player1 else 2
         if start_board != -1:
             self.unexplored_start_states[player_num].append(start_board)
-        print(f'Learning (Starting Player = {player_num}) ...')
-        stop_data = {'num_episodes_remaining': max_episodes}
-        num_episodes = 0 # Episode counter.
-        max_states_visited = 0 # Max no. of moves explored in any episode.
-        try:
-            # 1. Loop for each episode until
-            #    the algorithm has converged or a 
-            #    stopping condition is met.
-            while not self.__is_stopping_condition_met(stop_data):
-                # Update episode count.
-                num_episodes += 1
-                stop_data['num_episodes_remaining'] -= 1
+        print(f'Learning (starting player = {player_num}) ...')
+        
+        # Configure params needed to check for stopping conditions.
+        stop_data = {'episodes': {
+            'max_episodes':max_episodes, 
+            'num_episodes':0
+        }}
+        if max_seconds is not None:
+            stop_data['time'] = {
+                "time_start": time.time(), 
+                "max_seconds":max_seconds
+            }
+        
+        # Learn
+
+        # 1. Loop for each episode until
+        #    the algorithm has converged or a 
+        #    stopping condition is met.
+        is_stopping_condition_met = self.__is_stopping_condition_met(stop_data)
+        while not is_stopping_condition_met[0]:
+            # Update episode count.
+            stop_data['episodes']['num_episodes'] += 1
+            
+            # Reset player for this episode.
+            player_num = 1 if is_player1 else 2
+
+            # 2. Pick a random start state.
+            s = self.get_random_state(player_num)
+
+            # 3. Do while a terminal state has not yet been reached.
+            while self.is_game_over(s) == -1:
                 
-                # Reset player for this episode.
-                player_num = 1 if is_player1 else 2
-
-                # 2. Pick a random start state.
-                s = self.get_random_state(player_num)
-
-                # 3. Do while a terminal state has not yet been reached.
-                num_states_visited = 0 # No. of states visited.
-                while self.is_game_over(s) == -1:
-                    
-                    # 4. From the list of possible actions from this 
-                    #    state s, pick a random one.
-                    possible_state_actions = []
-                    if player_num == 1:
-                        possible_state_actions = self.get_next_states(
-                            board = s, 
-                            is_player1 = True
-                        )
-                    else: # player_num == 2
-                        possible_state_actions = self.get_next_states(
-                            board = switch_player_perspective_int(s, self.board_shape), 
-                            is_player1 = False
-                        )
-                    state_action = random.choice(possible_state_actions)
-                    a = state_action[1] # action (action position, current player number)
-                    
-                    # 5. Get next state arrived at
-                    #    by executing randomly selected
-                    #    action a from state s.
-                    if a[1] == 1: # player_num == 1
-                        sn = state_action[0]
-                    else: # player_num == 2
-                        sn = switch_player_perspective_int(state_action[0], self.board_shape)
-                    
-                    # 6. Get highest Q value among that of all
-                    #    (next state, possible next action) pairs.
-                    next_player_num = player_num % 2 + 1 # a[1] % 2 + 1
-                    if not sn in self.q_tab[next_player_num]:
+                # 4. From the list of possible actions from this 
+                #    state s, pick a random one.
+                possible_state_actions = []
+                if player_num == 1:
+                    possible_state_actions = self.get_next_states(
+                        board = s, 
+                        is_player1 = True
+                    )
+                else: # player_num == 2
+                    possible_state_actions = self.get_next_states(
+                        board = switch_player_perspective_int(s, self.board_shape), 
+                        is_player1 = False
+                    )
+                state_action = random.choice(possible_state_actions)
+                a = state_action[1] # action (action position, current player number)
+                
+                # 5. Get next state arrived at
+                #    by executing randomly selected
+                #    action a from state s.
+                if a[1] == 1: # player_num == 1
+                    sn = state_action[0]
+                else: # player_num == 2
+                    sn = switch_player_perspective_int(state_action[0], self.board_shape)
+                
+                # 6. Get highest Q value among that of all
+                #    (next state, possible next action) pairs.
+                next_player_num = player_num % 2 + 1 # a[1] % 2 + 1
+                if not sn in self.q_tab[next_player_num]:
+                    max_q_sn_an = self.q_val_unknown
+                else:   
+                    an_dict = self.q_tab[next_player_num][sn]
+                    max_q_sn_an = float('-inf')
+                    for an, q_sn_an in an_dict.items():
+                        if q_sn_an > max_q_sn_an: 
+                            max_q_sn_an = q_sn_an
+                    if max_q_sn_an == float('-inf'):
                         max_q_sn_an = self.q_val_unknown
-                    else:   
-                        an_dict = self.q_tab[next_player_num][sn]
-                        max_q_sn_an = float('-inf')
-                        for an, q_sn_an in an_dict.items():
-                            if q_sn_an > max_q_sn_an: 
-                                max_q_sn_an = q_sn_an
-                        if max_q_sn_an == float('-inf'):
-                            max_q_sn_an = self.q_val_unknown
 
-                    # 7. Compute the following formula and update Q value:
-                    #    Q(s, a) <-- (1 - alpha) Q(s, a) + alpha [
-                    #       R(s, a) + { gamma x max_an[ Q(sn, an) ] }
-                    #    ]
-                    if (
-                        not s in self.q_tab[player_num] or
-                        not a in self.q_tab[player_num][s]
-                    ):
-                        q_s_a = self.q_val_unknown
-                    else:
-                        q_s_a = self.q_tab[player_num][s][a]
-                    if player_num == 1:
-                        r_s_a = self.get_reward(s, a)
-                    else: # player_num == 1
-                        r_s_a = self.get_reward(
-                            switch_player_perspective(
-                                int2board(s, self.board_shape)
-                            ), a
-                        )
-                    if not s in self.q_tab[player_num]:
-                        self.q_tab[player_num][s] = {}
-                    self.q_tab[player_num][s][a] = (
-                        ((1 - learning_rate) * q_s_a) + 
-                        (learning_rate * (r_s_a + (discount_factor * max_q_sn_an)))
+                # 7. Compute the following formula and update Q value:
+                #    Q(s, a) <-- (1 - alpha) Q(s, a) + alpha [
+                #       R(s, a) + { gamma x max_an[ Q(sn, an) ] }
+                #    ]
+                if (
+                    not s in self.q_tab[player_num] or
+                    not a in self.q_tab[player_num][s]
+                ):
+                    q_s_a = self.q_val_unknown
+                else:
+                    q_s_a = self.q_tab[player_num][s][a]
+                if player_num == 1:
+                    r_s_a = self.get_reward(s, a)
+                else: # player_num == 1
+                    r_s_a = self.get_reward(
+                        switch_player_perspective(
+                            int2board(s, self.board_shape)
+                        ), a
                     )
+                if not s in self.q_tab[player_num]:
+                    self.q_tab[player_num][s] = {}
+                self.q_tab[player_num][s][a] = (
+                    ((1 - learning_rate) * q_s_a) + 
+                    (learning_rate * (r_s_a + (discount_factor * max_q_sn_an)))
+                )
 
-                    # 8. Set the next state to be the new current state.
-                    #    And switch players.
-                    s = sn
-                    player_num = next_player_num
-                    
-                    # Update performance metric.
-                    num_states_visited += 1
-                    max_states_visited = max(
-                        num_states_visited, 
-                        max_states_visited
-                    )
+                # 8. Set the next state to be the new current state.
+                #    And switch players.
+                s = sn
+                player_num = next_player_num
 
-            print(f'All done. Episodes = {num_episodes}.')
-        except KeyboardInterrupt:
-            return ('Keyboard Interrupt', max_states_visited)
+            # Check if stopping condition is met.
+            is_stopping_condition_met = self.__is_stopping_condition_met(stop_data)
+
+        print(f'All done. Episodes = {stop_data['episodes']['num_episodes']}.')
+
+        # Return no. of moves visited.
+        num_moves = 0
+        for player_state in self.q_tab.values():
+            state_actions = player_state.values()
+            num_moves += len(state_actions)
+        return {
+            'num_moves':num_moves, 
+            'num_episodes':stop_data['episodes']['num_episodes'],
+            'stopping_condition': is_stopping_condition_met[1]
+        }
 
     def load_qtab(self, src:str):
         """ 
@@ -902,18 +932,18 @@ class StrategyTabQLearning(Strategy):
         
         print(f"Loaded Q table from {src}.")
 
-    def save_qtab(self, name:str, folder:str='.'):
+    def save_qtab(self, filename:str, folder:str='.'):
         """ 
         Function saves the Q table so that
         training need not be done every time
         from scratch.
         @param folder: Folder at which to save file.
-        @param name: Name of file.
+        @param filename: Name of file.
         """
         if not os.path.exists(folder):
             os.makedirs(folder)
         
-        dst = f"{folder}/{name}.json"
+        dst = f"{folder}/{filename}.json"
         with open(dst, 'w') as f:
             f.write(self.q_tab_to_json(self.q_tab))
 

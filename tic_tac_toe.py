@@ -17,7 +17,6 @@ class WorldTTT(World):
     """
 
     def __init__(self,
-        board_size:tuple, 
         player1sym:str, 
         player2sym:str, 
         output_handler:OutputHandler
@@ -25,7 +24,7 @@ class WorldTTT(World):
         """ Constructor. """
         super().__init__(
             type="ttt",
-            board_size=board_size, 
+            board_size=(3,3), 
             player1sym=player1sym, 
             player2sym=player2sym,
             output_handler=output_handler,

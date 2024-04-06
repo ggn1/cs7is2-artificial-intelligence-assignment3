@@ -23,5 +23,5 @@ if __name__ == "__main__":
     w.play(id="x_def_o_rand", out_config={
         "print": {"moves": True, "status":True, "metrics":['game', 'session']},
         "log": {"moves": True, "status":True, "metrics":['game', 'session']},
-        "csv": {"filname": "ttt"}
+        "csv": {"filename": "ttt"}
     }, num_games=10)

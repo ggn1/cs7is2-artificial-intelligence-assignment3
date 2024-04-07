@@ -1,4 +1,4 @@
-### This file defines the default game strategy.
+### This file defines the various game strategies.
 
 import os
 import json
@@ -14,11 +14,6 @@ from utility import str_to_int_2tuple
 from utility import get_random_free_pos
 from utility import switch_player_perspective
 from utility import switch_player_perspective_int
-
-# Note: Here get_move(...) function does not deal
-#       with the case where a move is not possible
-#       because this function is only ever called
-#       with valid non-terminal states and legal actions. 
 
 class Strategy:
     """ 
@@ -777,7 +772,7 @@ class StrategyTabQLearning(Strategy):
         learning_rate:float, # alpha
         is_player1:bool,
         max_seconds:int=None,
-        start_board:int=-1
+        start_board:int=None
     ):
         """ 
         Perform Q learning to determine best 
@@ -798,7 +793,7 @@ class StrategyTabQLearning(Strategy):
                             of player 1, to start learning using.
         """
         player_num = 1 if is_player1 else 2
-        if start_board != -1:
+        if not start_board is None:
             self.unexplored_start_states[player_num].append(start_board)
         print(f'Learning (starting player = {player_num}) ...')
         

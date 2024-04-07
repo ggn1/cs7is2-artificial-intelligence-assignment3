@@ -154,7 +154,7 @@ class OutputHandler:
                     + "avg_milliseconds_per_move_player1,"
                     + "avg_milliseconds_per_move_player2,"
                     + "num_moves,session_id,session_timestamp,"
-                    + "milliseconds,game_num,moves_visited\n"
+                    + "milliseconds,game_num\n"
                 )
         to_save = (
             f"{world_type},{player1},{player2},{outcome},"

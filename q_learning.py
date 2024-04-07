@@ -81,7 +81,7 @@ if __name__ == "__main__":
             player1sym='X', player2sym='O',
             output_handler=OutputHandler(
                 logs_folder="./__logs",
-                csv_folder="./__run_metrics"
+                csv_folder="./__run_results"
             )
         )
     else:
@@ -89,7 +89,7 @@ if __name__ == "__main__":
             player1sym='X', player2sym='O',
             output_handler=OutputHandler(
                 logs_folder="./__logs",
-                csv_folder="./__run_metrics"
+                csv_folder="./__run_results"
             )
         )
 
@@ -171,7 +171,7 @@ if __name__ == "__main__":
                 os.makedirs(args.save_folder)
         q_table_filename = (
             f"{datetime_id}{world.type}{args.alpha}"
-            + f"alpha{args.gamma}gamma{total_num_episodes}episodes{total_minutes}mins"
+            + f"alpha{args.gamma}gamma{total_num_episodes}episodes{round(total_minutes)}mins"
         )
         strategy_tabq.save_qtab(
             folder=args.save_folder, 

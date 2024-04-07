@@ -1,14 +1,12 @@
-### EXPERIMENT 1: 
-### Game: Tic Tac Toe
-### Play 100 Games: Minimax Player v/s Default Opponent.
-### Play 100 Games: Q Learning Player v/s Default Opponent.
+### EXPERIMENT 4: 
+### Game: Connect 4
+### Play 100 Games: Minimax Player v/s Q Learning Player.
 
 import argparse
 from player import Player
-from tic_tac_toe import WorldTTT
+from connect4 import WorldCon4
 from strategies import StrategyMiniMax
 from output_handler import OutputHandler
-from strategies import StrategyDefaultTTT
 from strategies import StrategyTabQLearning
 
 def parse_cmd_args():
@@ -16,10 +14,9 @@ def parse_cmd_args():
     
     # Fetch command line arguments.
     parser = argparse.ArgumentParser(description=(
-        'Script to run experiment 1 that ' +
-        'runs minimax player v/s default opponent ' + 
-        'and q learning player v/s default opponent ' +
-        'at the game of Tic Tac Toe.'
+        'Script to run experiment 4 that ' +
+        'runs minimax player v/s q learning player ' + 
+        'at the game of Connect 4.'
     ))
     parser.add_argument(
         '--logs-folder', type=str, required=True,
@@ -43,23 +40,21 @@ if __name__ == "__main__":
     args = parse_cmd_args()
     
     # Create world.
-    world = WorldTTT(
-        player1sym='X', player2sym='O',
+    world = WorldCon4(
+        player1sym='R', player2sym='Y',
         output_handler=OutputHandler(
             logs_folder=args.logs_folder,
             csv_folder=args.csv_folder
         )
     )
-    
-    # Define default strategy.
-    strategy_default = StrategyDefaultTTT()
 
     # Define minimax strategy.
     strategy_minimax = StrategyMiniMax(
         is_game_over=world.is_game_over,
         state_eval=world.state_eval,
         get_next_states=world.get_next_states,
-        alpha_beta=True
+        alpha_beta=True,
+        depth=5
     )
 
     # Define q leaning strategy.
@@ -74,22 +69,12 @@ if __name__ == "__main__":
     )
     strategy_tabq.load_qtab(src=args.q_table)
 
-    # Play 100 Tic Tac Toe games: Default (X) v/s Minimax (O).
-    p1 = Player(symbol='X', strategy=strategy_default, is_player1=True)
-    p2 = Player(symbol='O', strategy=strategy_minimax, is_player1=False)
+    # Play 100 Tic Tac Toe games: Q Learning (R) v/s Minimax (Y).
+    p1 = Player(symbol='R', strategy=strategy_tabq, is_player1=True)
+    p2 = Player(symbol='Y', strategy=strategy_minimax, is_player1=False)
     world.configure_players(player1=p1, player2=p2)
-    world.play(id="exp1_ttt_x_def_o_minimax", out_config={
+    world.play(id="exp4_ttt_r_qtab_y_minimax", out_config={
         "print": {"moves": False, "status":False, "metrics":['session']},
         "log": {"moves": False, "status":False, "metrics":['session']},
-        "csv": {"filename": "ttt"}
-    }, num_games=100)
-
-    # Play 100 Tic Tac Toe games: Default (X) v/s Minimax (O).
-    p1 = Player(symbol='X', strategy=strategy_default, is_player1=True)
-    p2 = Player(symbol='O', strategy=strategy_tabq, is_player1=False)
-    world.configure_players(player1=p1, player2=p2)
-    world.play(id="exp1_ttt_x_def_o_tabq", out_config={
-        "print": {"moves": False, "status":False, "metrics":['session']},
-        "log": {"moves": False, "status":False, "metrics":['session']},
-        "csv": {"filename": "ttt"}
+        "csv": {"filename": "con4"}
     }, num_games=100)

@@ -392,8 +392,7 @@ class StrategyMiniMax(Strategy):
         state_eval:Callable, 
         get_next_states:Callable,
         depth=None,
-        alpha_beta=False,
-        name:str=None
+        alpha_beta=False
     ):
         """ 
         Constructor. 
@@ -418,7 +417,7 @@ class StrategyMiniMax(Strategy):
                            By default, this is is "None" which means
                            that no alpha beta pruning shall be done.
         """
-        super().__init__(name=name)
+        super().__init__()
         self.is_game_over = is_game_over
         self.state_eval = state_eval
         self.get_next_states = get_next_states
@@ -616,7 +615,7 @@ class StrategyTabQLearning(Strategy):
         }
         self.q_tab = {1:{}, 2:{}}
         self.board_shape = board_shape
-        self.q_val_unknown = -150 # Unknown state action pairs have this value.
+        self.q_val_unknown = 0 # Unknown state action pairs have this value.
         self.unexplored_start_states = {
             1: get_start_states(is_player1=True), # player 1
             2: get_start_states(is_player1=False) # player 2
@@ -852,7 +851,7 @@ class StrategyTabQLearning(Strategy):
                 # 5. Get next state arrived at
                 #    by executing randomly selected
                 #    action a from state s.
-                if a[1] == 1: # player_num == 1
+                if player_num == 1: # a[1] == 1
                     sn = state_action[0]
                 else: # player_num == 2
                     sn = switch_player_perspective_int(state_action[0], self.board_shape)
@@ -884,7 +883,7 @@ class StrategyTabQLearning(Strategy):
                     q_s_a = self.q_tab[player_num][s][a]
                 if player_num == 1:
                     r_s_a = self.get_reward(s, a)
-                else: # player_num == 1
+                else: # player_num == 2
                     r_s_a = self.get_reward(
                         switch_player_perspective(
                             int2board(s, self.board_shape)
@@ -892,10 +891,11 @@ class StrategyTabQLearning(Strategy):
                     )
                 if not s in self.q_tab[player_num]:
                     self.q_tab[player_num][s] = {}
-                self.q_tab[player_num][s][a] = (
+                new_val = (
                     ((1 - learning_rate) * q_s_a) + 
                     (learning_rate * (r_s_a + (discount_factor * max_q_sn_an)))
                 )
+                self.q_tab[player_num][s][a] = new_val
 
                 # 8. Set the next state to be the new current state.
                 #    And switch players.

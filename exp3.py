@@ -1,14 +1,12 @@
-### EXPERIMENT 1: 
+### EXPERIMENT 3: 
 ### Game: Tic Tac Toe
-### Play 100 Games: Minimax Player v/s Default Opponent.
-### Play 100 Games: Q Learning Player v/s Default Opponent.
+### Play 100 Games: Minimax Player v/s Q Learning Player.
 
 import argparse
 from player import Player
 from tic_tac_toe import WorldTTT
 from strategies import StrategyMiniMax
 from output_handler import OutputHandler
-from strategies import StrategyDefaultTTT
 from strategies import StrategyTabQLearning
 
 def parse_cmd_args():
@@ -16,9 +14,8 @@ def parse_cmd_args():
     
     # Fetch command line arguments.
     parser = argparse.ArgumentParser(description=(
-        'Script to run experiment 1 that ' +
-        'runs minimax player v/s default opponent ' + 
-        'and q learning player v/s default opponent ' +
+        'Script to run experiment 3 that ' +
+        'runs minimax player v/s q learning player ' + 
         'at the game of Tic Tac Toe.'
     ))
     parser.add_argument(
@@ -50,9 +47,6 @@ if __name__ == "__main__":
             csv_folder=args.csv_folder
         )
     )
-    
-    # Define default strategy.
-    strategy_default = StrategyDefaultTTT()
 
     # Define minimax strategy.
     strategy_minimax = StrategyMiniMax(
@@ -74,21 +68,11 @@ if __name__ == "__main__":
     )
     strategy_tabq.load_qtab(src=args.q_table)
 
-    # Play 100 Tic Tac Toe games: Default (X) v/s Minimax (O).
-    p1 = Player(symbol='X', strategy=strategy_default, is_player1=True)
+    # Play 100 Tic Tac Toe games: Q Learning (X) v/s Minimax (O).
+    p1 = Player(symbol='X', strategy=strategy_tabq, is_player1=True)
     p2 = Player(symbol='O', strategy=strategy_minimax, is_player1=False)
     world.configure_players(player1=p1, player2=p2)
-    world.play(id="exp1_ttt_x_def_o_minimax", out_config={
-        "print": {"moves": False, "status":False, "metrics":['session']},
-        "log": {"moves": False, "status":False, "metrics":['session']},
-        "csv": {"filename": "ttt"}
-    }, num_games=100)
-
-    # Play 100 Tic Tac Toe games: Default (X) v/s Minimax (O).
-    p1 = Player(symbol='X', strategy=strategy_default, is_player1=True)
-    p2 = Player(symbol='O', strategy=strategy_tabq, is_player1=False)
-    world.configure_players(player1=p1, player2=p2)
-    world.play(id="exp1_ttt_x_def_o_tabq", out_config={
+    world.play(id="exp3_ttt_x_qtab_o_minimax", out_config={
         "print": {"moves": False, "status":False, "metrics":['session']},
         "log": {"moves": False, "status":False, "metrics":['session']},
         "csv": {"filename": "ttt"}

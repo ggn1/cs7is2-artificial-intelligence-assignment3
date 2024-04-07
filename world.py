@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from player import Player
 from utility import int2board
@@ -223,9 +224,11 @@ class World:
         @param board: Game board from the perspective
                       of a player.
         @param action: That player's action to take.
-        @return reward: The value of resulting state. If
-                        this action is illegal or results in
-                        an invalid state, then -150 is returned.
+        @return reward: The value of the state arrived at upon
+                        executing given action from given state
+                        for the given player. If this action is 
+                        illegal or results in an invalid state, 
+                        then -150 is returned.
         """
         if type(board) == int:
             board = int2board(board, self.board.shape)
@@ -398,7 +401,7 @@ class World:
                     session_timestamp=session_timestamp, 
                     world_str=self.__str__()
                 )
-
+    
         # Determine winner if any.
         if self.is_winner(self.board) == 1:
             outcome[self.player_symbols[self.next_turn]]['won'] += 1
@@ -491,8 +494,8 @@ class World:
             if "csv" in out_config:
                 self.output_handler.append_to_csv(
                     world_type=self.type,
-                    player1=self.player_symbols[1],
-                    player2=self.player_symbols[2],
+                    player1=self.player1.strategy.name,
+                    player2=self.player2.strategy.name,
                     outcome=winner,
                     avg_milliseconds_per_move_player1=outcome['f_out'][
                         self.player_symbols[1]

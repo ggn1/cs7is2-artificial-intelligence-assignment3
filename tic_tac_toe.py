@@ -318,21 +318,66 @@ class WorldTTT(World):
         # Anti diagonal value.
         vals.append(self.__get_set_val(np.fliplr(board).diagonal().tolist()))
 
+        # # Compute state value.
+        # if 4 in vals: return 10.0
+        # elif -3 in vals: return -10.0
+        # elif is_my_turn_next: # It's my turn next.
+        #     if 3 in vals: return 5.0
+        #     elif -1 in vals: 
+        #         if vals.count(-1) == 1: return 1.0
+        #         else: return -5.0
+        #     else: 
+        #         # return np.mean(vals)
+        #         return 5.0
+        # else: # It's my opponent's turn next.
+        #     if -1 in vals: return -5.0
+        #     elif 3 in vals:
+        #         if vals.count(3) == 1: 
+        #             return 0.0
+        #             # return -1.0
+        #         else: return  5.0
+        #     else: 
+        #         # return np.mean(vals)
+        #         return 5.0
+
         # Compute state value.
-        if 4 in vals: return 10.0
-        elif -3 in vals: return -10.0
-        elif is_my_turn_next: # It's my turn next.
-            if 3 in vals: return 5.0
+        # If I can win => great
+        if 4 in vals: return 15.0
+        # If opponent wins => terrible
+        elif -3 in vals: return -15.0
+        # If it's my turn next.
+        elif is_my_turn_next: 
+            # And I can win despite my opponent trying to block => good
+            if 3 in vals: 
+                return 10.0
+            # And my opponent is going to win ..
             elif -1 in vals: 
-                if vals.count(-1) == 1: return 1.0
-                else: return -5.0
-            else: return np.mean(vals)
-        else: # It's my opponent's turn next.
-            if -1 in vals: return -5.0
+                # But I can block => phew ...
+                if vals.count(-1) == 1: 
+                    return 0.0
+                # and I cannot block => bad
+                else: return -10.0
+            else: 
+                # return np.mean(vals)
+                # If the game continues to draw => good
+                return 10.0
+        # If it's my opponent's turn next 
+        else: 
+            # And the opponent is going to win => bad
+            if -1 in vals: 
+                return -10.0
+            # Else if I was going to win ...
             elif 3 in vals:
-                if vals.count(3) == 1: return 0.0
-                else: return  5.0
-            else: return np.mean(vals)
+                # But the opponent blocks => not ideal ...
+                if vals.count(3) == 1: 
+                    return 5.0
+                # and I win despite the opponent trying to block => good
+                else: 
+                    return 10.0
+            else: 
+                # return np.mean(vals)
+                # If the game continues to draw => good
+                return 10.0
 
     def get_start_states(self, is_player1:bool) -> list:
         """

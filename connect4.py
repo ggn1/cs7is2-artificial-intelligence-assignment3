@@ -719,15 +719,11 @@ class WorldCon4(World):
 
         # If I have won, then great.
         if sum([1 if n >=4 else 0 for n in sbsa_1.keys()]) > 0:
-            return 100
+            return 15.0
 
         # If I have lost, then terrible.
         if sum([1 if n >=4 else 0 for n in sbsa_0.keys()]) > 0:
-            return -100
-        
-        # If I have lost, then terrible.
-        if sum([1 if n >=4 else 0 for n in sbsa_0.keys()]) > 0:
-            return -100
+            return -15.0
         
         # Get no. of opportunities where I can connect 4.
         icc4 = 0
@@ -759,24 +755,31 @@ class WorldCon4(World):
         
         # If it is my turn next ...
         if is_my_turn_next:
-            # If I can win, then good.
-            if icc4 > 0: return 50
-            # If the opponent can win, then bad.
-            if occ4 > 1: return -50
-            # If I can block, then nice.
-            elif occ4 == 1: return 10
-            # If opponent cannot win, then I'm doing ok.
-            else: return 1 # occ4 == 0
-
+            # And I can win despite my opponent trying to block, then good.
+            if icc4 > 0: 
+                return 10.0
+            # If the opponent will win and I cannot block, then bad.
+            if occ4 > 1: 
+                return -10.0
+            # If the opponent can win but I can block, then phew.
+            if occ4 == 1: 
+                return 0.0
+    
         # If it is my opponent's turn next ...
         else:
-            # If my opponent can win, then bad.
-            if occ4 > 0: return -50
-            # If I can win, then good.
-            if icc4 > 1: return 10 * icc4
+            # And my opponent can win and I cannot block, then bad.
+            if occ4 > 0: 
+                return -10.0
+            # If I can win despite my opponent trying, then good.
+            elif icc4 > 1: 
+                return 10.0
+            # I can win but my opponent can block, then not ideal.
+            elif icc4 == 1:
+                return 5.0
 
-        # Catch all other cases.
-        return 0
+        # If the game draws on, then good.
+        # return 1 
+        return 10.0
     
     def get_start_states(self, is_player1:bool) -> list:
         """

@@ -1,0 +1,13 @@
+
+Applied Minimax on board:
+0 # # # # # # #
+1 # # # # # # #
+2 # # # # # # #
+3 # # # # # R Y
+4 # # # R R R Y
+5 # # # R Y Y Y
+  0 1 2 3 4 5 6
+
+
+Run Time = 1811.570660352707 seconds.
+No. of moves visited = 5352594

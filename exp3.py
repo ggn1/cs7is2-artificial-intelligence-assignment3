@@ -72,7 +72,7 @@ if __name__ == "__main__":
     p1 = Player(symbol='X', strategy=strategy_tabq, is_player1=True)
     p2 = Player(symbol='O', strategy=strategy_minimax, is_player1=False)
     world.configure_players(player1=p1, player2=p2)
-    world.play(id="exp3_ttt_x_qtab_o_minimax", out_config={
+    world.play(id="exp3_x_qtab_o_minimax", out_config={
         "print": {"moves": False, "status":False, "metrics":['session']},
         "log": {"moves": False, "status":False, "metrics":['session']},
         "csv": {"filename": "ttt"}

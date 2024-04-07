@@ -1,0 +1,19 @@
+
+
+Metrics (World 'ttt', Session 'exp8_ttt_x_minimax_1000_depth_o_def'): {
+    "X": {
+        "won": 98,
+        "lost": 0,
+        "avg_milliseconds_per_move": 36.69186500450923,
+        "num_moves": 418
+    },
+    "O": {
+        "won": 0,
+        "lost": 0,
+        "avg_milliseconds_per_move": 1.5700642514333722e-17,
+        "num_moves": 318
+    },
+    "num_draws": 2,
+    "num_games": 100,
+    "milliseconds": 867.9367782696106
+}

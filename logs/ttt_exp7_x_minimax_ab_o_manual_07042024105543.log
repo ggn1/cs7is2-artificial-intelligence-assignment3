@@ -1,0 +1,80 @@
+
+
+Playing Session: World 'ttt', Session 'exp7_ttt_x_minimax_ab_o_manual')
+
+Playing Game: World 'ttt', Session 'exp7_ttt_x_minimax_ab_o_manual', Game '1')
+
+0 # # #
+1 # # #
+2 # # #
+  0 1 2
+next turn = X
+
+0 X # #
+1 # # #
+2 # # #
+  0 1 2
+next turn = O
+
+0 X # #
+1 # O #
+2 # # #
+  0 1 2
+next turn = X
+
+0 X X #
+1 # O #
+2 # # #
+  0 1 2
+next turn = O
+
+0 X X O
+1 # O #
+2 # # #
+  0 1 2
+next turn = X
+
+0 X X O
+1 # O #
+2 X # #
+  0 1 2
+next turn = O
+
+0 X X O
+1 O O #
+2 X # #
+  0 1 2
+next turn = X
+
+0 X X O
+1 O O X
+2 X # #
+  0 1 2
+next turn = O
+
+0 X X O
+1 O O X
+2 X O #
+  0 1 2
+next turn = X
+
+0 X X O
+1 O O X
+2 X O X
+  0 1 2
+next turn = O
+
+Metrics (World 'ttt', Session 'exp7_ttt_x_minimax_ab_o_manual', Game '1'): {
+    "X": {
+        "won": 0,
+        "lost": 0,
+        "avg_milliseconds_per_move": 27.055496215820312,
+        "num_moves": 5
+    },
+    "O": {
+        "won": 0,
+        "lost": 0,
+        "avg_milliseconds_per_move": 11767.665298461914,
+        "num_moves": 4
+    }
+}

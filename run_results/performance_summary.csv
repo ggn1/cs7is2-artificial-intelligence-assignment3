@@ -1,0 +1,12 @@
+experiment,game,player,opponent,win_rate,loss_rate,draw_rate,avg_move_ms,avg_game_moves
+1,Tic Tac Toe,Minimax (Alpha Beta),default,40.0,0.0,60.0,11.719084014892578,8.6
+1,Tic Tac Toe,Tabular Q Learning,default,20.0,6.0,74.0,0.03027862548828125,8.68
+3,Tic Tac Toe,Minimax (Alpha Beta),Tabular Q Learning,0.0,0.0,100.0,13.650459899902344,9.0
+3,Tic Tac Toe,Tabular Q Learning,Minimax (Alpha Beta),0.0,0.0,100.0,0.002243804931640625,9.0
+6,Connect 4,Tabular Q Learning,random,28.999999999999996,71.0,0.0,0.23804092526435852,19.93
+8,Tic Tac Toe,Minimax (Alpha Beta + Low Depth = 2),default,68.0,7.000000000000001,25.0,0.6071774291992188,7.89
+8,Tic Tac Toe,Minimax (Alpha Beta + High Depth = 1000),default,98.0,0.0,2.0,50.00451629638672,7.36
+2,Connect 4,Minimax (Alpha Beta),default,70.0,28.000000000000004,2.0,190.33619606775582,26.84
+2,Connect 4,Tabular Q Learning,default,2.0,98.0,0.0,0.20237690895795823,17.8
+4,Connect 4,"Minimax (Alpha Beta, Depth = 5)",Tabular Q Learning,100.0,0.0,0.0,177.8972756715119,13.04
+4,Connect 4,Tabular Q Learning,Minimax (Alpha Beta),0.0,100.0,0.0,0.07335830807685852,13.04

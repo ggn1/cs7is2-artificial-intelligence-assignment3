@@ -71,7 +71,7 @@ if __name__ == "__main__":
     p1 = Player(symbol='X', strategy=strategy_minimax_small_depth, is_player1=True)
     p2 = Player(symbol='O', strategy=strategy_default, is_player1=False)
     world.configure_players(player1=p1, player2=p2)
-    world.play(id="exp8_ttt_x_minimax_2_depth_o_def", out_config={
+    world.play(id="exp8_x_minimax_2_depth_o_def", out_config={
         "print": {"moves": False, "status":False, "metrics":['session']},
         "log": {"moves": False, "status":False, "metrics":['session']},
         "csv": {"filename": "ttt"}
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     p1 = Player(symbol='X', strategy=strategy_minimax_large_depth, is_player1=True)
     p2 = Player(symbol='O', strategy=strategy_default, is_player1=False)
     world.configure_players(player1=p1, player2=p2)
-    world.play(id="exp8_ttt_x_minimax_1000_depth_o_def", out_config={
+    world.play(id="exp8_x_minimax_1000_depth_o_def", out_config={
         "print": {"moves": False, "status":False, "metrics":['session']},
         "log": {"moves": False, "status":False, "metrics":['session']},
         "csv": {"filename": "ttt"}

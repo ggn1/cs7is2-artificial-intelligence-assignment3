@@ -81,7 +81,7 @@ if __name__ == "__main__":
     p1 = Player(symbol='R', strategy=strategy_default, is_player1=True)
     p2 = Player(symbol='Y', strategy=strategy_minimax, is_player1=False)
     world.configure_players(player1=p1, player2=p2)
-    world.play(id="exp2_con4_r_def_y_minimax", out_config={
+    world.play(id="exp2_r_def_y_minimax", out_config={
         "print": {"moves": False, "status":False, "metrics":['session']},
         "log": {"moves": False, "status":False, "metrics":['session']},
         "csv": {"filename": "con4"}
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     p1 = Player(symbol='R', strategy=strategy_default, is_player1=True)
     p2 = Player(symbol='Y', strategy=strategy_tabq, is_player1=False)
     world.configure_players(player1=p1, player2=p2)
-    world.play(id="exp2_con4_r_def_y_tabq", out_config={
+    world.play(id="exp2_r_def_y_tabq", out_config={
         "print": {"moves": False, "status":False, "metrics":['session']},
         "log": {"moves": False, "status":False, "metrics":['session']},
         "csv": {"filename": "con4"}

@@ -6,8 +6,6 @@ from utility import board2int
 from utility import get_row_col_diags
 from output_handler import OutputHandler
 
-LOGGER = logging.getLogger("logger_world_con4")
-
 class WorldCon4(World):
     """ 
     This class defines the Connect 4 
@@ -717,11 +715,11 @@ class WorldCon4(World):
                     if k in sbsa_1: sbsa_1[k] += v_new
                     else: sbsa_1[k] = v_new
 
-        # If I have won, then great.
+        # If I have won => great
         if sum([1 if n >=4 else 0 for n in sbsa_1.keys()]) > 0:
             return 15.0
 
-        # If I have lost, then terrible.
+        # If opponent has won => terrible
         if sum([1 if n >=4 else 0 for n in sbsa_0.keys()]) > 0:
             return -15.0
         
@@ -753,32 +751,32 @@ class WorldCon4(World):
                     direction=sbsa[3]
                 ))>0: occ4 += 1
         
-        # If it is my turn next ...
+        # If it's my turn next.
         if is_my_turn_next:
-            # And I can win despite my opponent trying to block, then good.
+            # And I can win => good
             if icc4 > 0: 
                 return 10.0
-            # If the opponent will win and I cannot block, then bad.
+            # And my opponent is going to win and I cannot block => bad
             if occ4 > 1: 
                 return -10.0
-            # If the opponent can win but I can block, then phew.
+            # And my opponent is going to win but I can block => phew ...
             if occ4 == 1: 
                 return 0.0
     
         # If it is my opponent's turn next ...
         else:
-            # And my opponent can win and I cannot block, then bad.
+            # And the opponent is going to win => bad
             if occ4 > 0: 
                 return -10.0
-            # If I can win despite my opponent trying, then good.
+            # If I was going to win an can do so despite
+            # the opponent trying to block => good
             elif icc4 > 1: 
                 return 10.0
-            # I can win but my opponent can block, then not ideal.
+            # If I can win but the opponent blocks => not ideal
             elif icc4 == 1:
                 return 5.0
 
-        # If the game draws on, then good.
-        # return 1 
+        # If the game continues to draw => good
         return 10.0
     
     def get_start_states(self, is_player1:bool) -> list:

@@ -16,9 +16,11 @@ def parse_cmd_args():
     
     # Fetch command line arguments.
     parser = argparse.ArgumentParser(description=(
-        'Script to run experiment 3 that ' +
-        'runs minimax player v/s q learning player ' + 
-        'at the game of Tic Tac Toe.'
+        'Script to run experiment 7 that ' +
+        'runs minimax player v/s manual player ' + 
+        'at the game of Tic Tac Toe such that ' +
+        'both minimax with and without alpha beta '
+        + 'pruning is considered.'
     ))
     parser.add_argument(
         '--logs-folder', type=str, required=True,
@@ -69,7 +71,7 @@ if __name__ == "__main__":
     p1 = Player(symbol='X', strategy=strategy_minimax, is_player1=True)
     p2 = Player(symbol='O', strategy=strategy_manual, is_player1=False)
     world.configure_players(player1=p1, player2=p2)
-    world.play(id="exp7_ttt_x_minimax_o_manual", out_config={
+    world.play(id="exp7_x_minimax_o_manual", out_config={
         "print": {"moves": True, "status":True, "metrics":['game']},
         "log": {"moves": True, "status":True, "metrics":['game']},
         "csv": {"filename": "ttt"}
@@ -79,7 +81,7 @@ if __name__ == "__main__":
     p1 = Player(symbol='X', strategy=strategy_minimax_alpha_beta, is_player1=True)
     p2 = Player(symbol='O', strategy=strategy_manual, is_player1=False)
     world.configure_players(player1=p1, player2=p2)
-    world.play(id="exp7_ttt_x_minimax_ab_o_manual", out_config={
+    world.play(id="exp7_x_minimax_ab_o_manual", out_config={
         "print": {"moves": True, "status":True, "metrics":['game']},
         "log": {"moves": True, "status":True, "metrics":['game']},
         "csv": {"filename": "ttt"}

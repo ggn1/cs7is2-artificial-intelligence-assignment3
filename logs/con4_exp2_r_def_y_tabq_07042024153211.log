@@ -1,0 +1,19 @@
+
+
+Metrics (World 'con4', Session 'exp2_r_def_y_tabq'): {
+    "R": {
+        "won": 98,
+        "lost": 0,
+        "avg_milliseconds_per_move": 9.318336680187697e-07,
+        "num_moves": 939
+    },
+    "Y": {
+        "won": 2,
+        "lost": 0,
+        "avg_milliseconds_per_move": 0.00012002226160314737,
+        "num_moves": 841
+    },
+    "num_draws": 0,
+    "num_games": 100,
+    "milliseconds": 14.454292345470295
+}

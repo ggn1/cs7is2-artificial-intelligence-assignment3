@@ -105,8 +105,12 @@ if __name__ == "__main__":
     )
 
     # Optionally load a pre-saved strategy.
+    prev_time_minutes = -1
     if args.load_path is not None:
         strategy_tabq.load_qtab(src=args.load_path)
+        prev_time_minutes = int(args.load_path[
+            args.load_path.find('episodes')+len('episodes'):args.load_path.rfind('mins')
+        ])
 
     # Optionally split training time
     # allocated among both players 1 and 2.
@@ -164,6 +168,9 @@ if __name__ == "__main__":
         )
 
     # Save Q table if needed.
+    save_time = round(total_minutes)
+    if prev_time_minutes > -1:
+        save_time += prev_time_minutes
     if args.save_folder is not None:
         # Set to to optionally save learned Q table.
         if args.save_folder is not None:
@@ -171,7 +178,7 @@ if __name__ == "__main__":
                 os.makedirs(args.save_folder)
         q_table_filename = (
             f"{datetime_id}{world.type}{args.alpha}"
-            + f"alpha{args.gamma}gamma{total_num_episodes}episodes{round(total_minutes)}mins"
+            + f"alpha{args.gamma}gamma{total_num_episodes}episodes{save_time}mins"
         )
         strategy_tabq.save_qtab(
             folder=args.save_folder, 

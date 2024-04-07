@@ -1,0 +1,19 @@
+
+
+Metrics (World 'con4', Session 'exp2_r_def_y_minimax'): {
+    "R": {
+        "won": 28,
+        "lost": 0,
+        "avg_milliseconds_per_move": 0.1141526255742623,
+        "num_moves": 1356
+    },
+    "Y": {
+        "won": 70,
+        "lost": 0,
+        "avg_milliseconds_per_move": 306.09386167282025,
+        "num_moves": 1328
+    },
+    "num_draws": 2,
+    "num_games": 100,
+    "milliseconds": 4159.4909429056215
+}

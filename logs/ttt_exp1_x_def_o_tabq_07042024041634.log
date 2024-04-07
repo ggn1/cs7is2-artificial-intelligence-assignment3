@@ -1,0 +1,19 @@
+
+
+Metrics (World 'ttt', Session 'exp1_ttt_x_def_o_tabq'): {
+    "X": {
+        "won": 6,
+        "lost": 0,
+        "avg_milliseconds_per_move": 0.13119477033615112,
+        "num_moves": 474
+    },
+    "O": {
+        "won": 20,
+        "lost": 0,
+        "avg_milliseconds_per_move": 1.3769749889090714e-09,
+        "num_moves": 394
+    },
+    "num_draws": 74,
+    "num_games": 100,
+    "milliseconds": 0.6491378902135895
+}

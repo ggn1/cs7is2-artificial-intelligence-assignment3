@@ -73,7 +73,7 @@ if __name__ == "__main__":
     p1 = Player(symbol='R', strategy=strategy_tabq, is_player1=True)
     p2 = Player(symbol='Y', strategy=strategy_minimax, is_player1=False)
     world.configure_players(player1=p1, player2=p2)
-    world.play(id="exp4_ttt_r_qtab_y_minimax", out_config={
+    world.play(id="exp4_r_qtab_y_minimax", out_config={
         "print": {"moves": False, "status":False, "metrics":['session']},
         "log": {"moves": False, "status":False, "metrics":['session']},
         "csv": {"filename": "con4"}

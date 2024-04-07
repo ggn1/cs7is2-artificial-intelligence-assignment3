@@ -101,7 +101,7 @@ class World:
 
     def is_valid(self, num_board:np.ndarray, is_player1:bool) -> bool:
         """ Given a board, return if it is a valid
-            state or not.
+            state from the given player's perspective or not.
             @param num_board: Board containing numbers from this
                               player's perspective.
             @param is_player1: If true, then this is the first player.

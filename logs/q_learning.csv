@@ -1,0 +1,4 @@
+timestamp,world_type,num_moves_visited,minutes,alpha,gamma,num_episodes,stopping_condition_p1,stopping_condition_p2
+07042024034202,ttt,4520,4.0000130859375,0.9,0.99,787736,time,time,
+07042024145514,con4,363179,15.000316088867187,0.9,0.99,107264,time,time,
+07042024151222,con4,632870,15.000347009277343,0.9,0.99,87319,time,time,

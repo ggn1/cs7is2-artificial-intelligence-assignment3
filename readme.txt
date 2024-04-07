@@ -1,3 +1,8 @@
+Note: In order to run files, Python 3 is required with added 
+packages being numpy and pandas. Also, should you wish to run 
+the python notebooks, a suitable environment (like VS code) with 
+ipykernel is also required.
+
 In order to train a Q learning model for either game, 
 the following command can be run with custom parameters. 
 Please view argument definitions in file q_learning.py 
@@ -30,7 +35,8 @@ To run experiment 4:
 To run experiment 5: [please stop this manually through keyboard interrupt]
 > python exp5.py --logs-folder ./__logs --logs-filename exp5_minimax_con4_30mins
 
-To run experiment 6:
+Note: Experiment 6 may take a long time on few runs depending on the random actions of the random player. If this occurs, then please stop and run again.
+To run experiment 6: 
 > python exp6.py --logs-folder ./__logs --csv-folder ./__run_results --q-table ./q_tables/07042024151222con40.9alpha0.99gamma87319episodes30mins.json
 
 To run experiment 7:

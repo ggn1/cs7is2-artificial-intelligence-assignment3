@@ -103,7 +103,7 @@ class WorldTTT(World):
         win_p2 = False
 
         # Check row, column and diagonal from
-        # center position.
+        # Check row, column and diagonal from
         row_col_diags = get_row_col_diags(
             board = num_board,
             row_idx = 1, col_idx = 1

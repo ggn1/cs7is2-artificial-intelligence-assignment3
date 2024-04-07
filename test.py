@@ -16,7 +16,7 @@ if __name__ == "__main__":
         board_size=(3, 3), player1sym='X', player2sym='O',
         output_handler=OutputHandler(
             logs_folder="./__logs",
-            csv_folder="./__run_metrics"
+            csv_folder="./__run_results"
         )
     )
     w.configure_players(player1=p1, player2=p2)

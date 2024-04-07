@@ -430,7 +430,7 @@ class StrategyMiniMax(Strategy):
         actions:list,
         is_player1:bool,
         depth:float=None, 
-        alpha_beta:tuple=None
+        alpha_beta:list=None
     ) -> dict:
         """
         Uses min max search to recursively determine the best 
@@ -449,7 +449,7 @@ class StrategyMiniMax(Strategy):
                       that no limit is placed on the depth and that 
                       the algorithm will continue searching until
                       every possible search path ends in a terminal state.
-        @param alpha_beta: A tuple wherein the fist element is the
+        @param alpha_beta: A 2 element list wherein the fist element is the
                            alpha value and the second one is the beta
                            value that allows for alpha beta pruning.
                            By default, this is is "None" which means

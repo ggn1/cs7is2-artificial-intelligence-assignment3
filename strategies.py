@@ -244,7 +244,7 @@ class StrategyRandomCon4(Strategy):
                  false otherwise.
         """
         bottom = (pos[0]+1, pos[1])
-        if bottom[0] > board.shape[0]:
+        if bottom[0] >= board.shape[0]:
             return True
         if board[bottom] == -1:
             return True

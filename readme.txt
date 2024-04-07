@@ -12,3 +12,7 @@ run using the following commands.
 > python exp2.py --logs-folder ./__logs --csv-folder ./__run_results --q-table ./__q_tables/07042024042415con40.9alpha0.99gamma195419episodes30mins.json
 > python exp3.py --logs-folder ./__logs --csv-folder ./__run_results --q-table ./__q_tables/07042024034202ttt0.9alpha0.99gamma787736episodes4mins.json
 > python exp4.py --logs-folder ./__logs --csv-folder ./__run_results --q-table ./__q_tables/07042024042415con40.9alpha0.99gamma195419episodes30mins.json
+> python exp5.py --logs-folder ./__logs --logs-filename exp5_minimax_con4_30mins
+> python exp6.py --logs-folder ./__logs --csv-folder ./__run_results --q-table ./__q_tables/07042024042415con40.9alpha0.99gamma195419episodes30mins.json
+> python exp7.py --logs-folder ./__logs --csv-folder ./__run_results
+> python exp8.py --logs-folder ./__logs --csv-folder ./__run_results
